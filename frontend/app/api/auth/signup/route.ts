@@ -1,0 +1,111 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from "@/lib/env";
+
+// ============================================================================
+// Smart Jotter — Server-side signup with auto-confirm
+// ============================================================================
+// WHY THIS EXISTS:
+//   This project shares a Supabase instance with a school project, so we
+//   cannot disable "Confirm email" globally (it would affect the other app).
+//   Instead, this route uses the Supabase *service role* key to create the
+//   user AND immediately confirm their email, so Smart Jotter users can log
+//   in right away without clicking an email link.
+//
+// SECURITY:
+//   - The service_role key bypasses RLS and is ONLY available server-side
+//     (never exposed to the browser via NEXT_PUBLIC_).
+//   - This endpoint does NOT establish a session. The client signs in
+//     separately via the normal anon-key client after we return success.
+// ============================================================================
+
+type SignupRequestBody = {
+  email?: string;
+  password?: string;
+};
+
+export async function POST(request: Request) {
+  let body: SignupRequestBody;
+
+  try {
+    body = (await request.json()) as SignupRequestBody;
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid request body." },
+      { status: 400 }
+    );
+  }
+
+  const email = body.email?.trim().toLowerCase();
+  const password = body.password;
+
+  if (!email || !password) {
+    return NextResponse.json(
+      { error: "Email and password are required." },
+      { status: 400 }
+    );
+  }
+
+  if (password.length < 6) {
+    return NextResponse.json(
+      { error: "Password must be at least 6 characters." },
+      { status: 400 }
+    );
+  }
+
+  let adminClient;
+
+  try {
+    adminClient = createClient(
+      getSupabaseUrl(),
+      getSupabaseServiceRoleKey(),
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+  } catch (error) {
+    console.error("[signup] Server not configured:", error);
+    return NextResponse.json(
+      {
+        error:
+          "Signup is not configured on the server. Add SUPABASE_SERVICE_ROLE_KEY to .env.local."
+      },
+      { status: 503 }
+    );
+  }
+
+  // Create the user with email_confirmed_at set to now so they can sign in
+  // immediately. This is the admin API equivalent of disabling confirmation
+  // for this one user only — it does NOT affect the shared project settings.
+  const { data, error } = await adminClient.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true
+  });
+
+  if (error) {
+    // Handle the common "already registered" case with a helpful message.
+    const message = error.message || "Could not create your account.";
+
+    if (message.toLowerCase().includes("already been registered")) {
+      return NextResponse.json(
+        {
+          error:
+            "An account with this email already exists. Try logging in instead."
+        },
+        { status: 409 }
+      );
+    }
+
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    userId: data.user?.id ?? null,
+    message: "Account created. You can now log in."
+  });
+}

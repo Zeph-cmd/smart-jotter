@@ -133,25 +133,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw new Error("Authentication is not configured yet.");
         }
 
-        const emailRedirectTo =
-          typeof window !== "undefined" ? window.location.origin : undefined;
-
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo
-          }
+        // Create the account via our server-side route, which uses the
+        // Supabase service role key to auto-confirm the email. This lets
+        // Smart Jotter users sign in immediately WITHOUT disabling email
+        // confirmation globally (important: this Supabase project is shared
+        // with a school project).
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
         });
 
-        if (error) {
-          throw new Error(error.message || "Could not create your account right now.");
+        const data = (await response.json()) as { error?: string; success?: boolean };
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "Could not create your account right now.");
         }
 
-        // Immediately sign the user in so they can start using the app.
-        // With email confirmation disabled (see supabase/fix-login.sql) this
-        // always succeeds. If confirmation is still on, we surface a clear
-        // message instead of leaving the user in a confusing state.
+        // Account is created and confirmed — sign the user in immediately.
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password

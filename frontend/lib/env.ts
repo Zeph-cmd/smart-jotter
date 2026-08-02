@@ -30,3 +30,17 @@ export function getOpenAIKey() {
 export function getDeepgramKey() {
   return process.env.DEEPGRAM_API_KEY;
 }
+
+export function getSupabaseServiceRoleKey() {
+  const value =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
+
+  if (!value) {
+    throw new Error(
+      "Missing Supabase service role key. Set SUPABASE_SERVICE_ROLE_KEY in .env.local. " +
+        "Find it in Supabase Dashboard > Project Settings > API > service_role key."
+    );
+  }
+
+  return value;
+}
