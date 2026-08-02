@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAudioQuotaSummary } from "@/lib/ai/audio-usage";
+import { getAudioQuotaSummary } from "@/lib/ai/entitlements";
 import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SubscriptionPrompt } from "@/components/ui/subscription-prompt";
 import { useVoiceRecorder } from "@/lib/hooks/use-voice-recorder";
 
 type QuotaSummary = {
@@ -69,6 +70,7 @@ export function SpeechToTextButton({
     null
   );
   const [quota, setQuota] = useState<QuotaSummary | null>(null);
+  const [showSubscription, setShowSubscription] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const refreshQuota = useCallback(async () => {
@@ -124,7 +126,13 @@ export function SpeechToTextButton({
     quota !== null && quota.remainingSeconds <= 0;
 
   const handleTriggerClick = () => {
-    if (disabled || isBusy || quotaExhausted) {
+    if (disabled || isBusy) {
+      return;
+    }
+
+    // If quota is exhausted, open the subscription prompt instead of recording.
+    if (quotaExhausted) {
+      setShowSubscription(true);
       return;
     }
 
@@ -184,12 +192,12 @@ export function SpeechToTextButton({
       <button
         type="button"
         onClick={handleTriggerClick}
-        disabled={disabled || isBusy || quotaExhausted}
+        disabled={disabled || isBusy}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         title={
           quotaExhausted
-            ? "Monthly audio limit reached"
+            ? "Recording limit reached — tap to upgrade"
             : undefined
         }
         className={
@@ -250,9 +258,17 @@ export function SpeechToTextButton({
       <div className="flex flex-col gap-1">
         {quota ? (
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {quotaExhausted
-              ? "Monthly audio limit reached."
-              : `${formatQuota(quota.remainingSeconds)} of audio left this month.`}
+            {quotaExhausted ? (
+              <button
+                type="button"
+                onClick={() => setShowSubscription(true)}
+                className="font-medium text-accent underline hover:text-blue-700 dark:text-blue-400"
+              >
+                Recording limit reached — tap to upgrade
+              </button>
+            ) : (
+              `${formatQuota(quota.remainingSeconds)} of audio left.`
+            )}
           </p>
         ) : null}
 
@@ -262,6 +278,11 @@ export function SpeechToTextButton({
           </p>
         ) : null}
       </div>
+
+      <SubscriptionPrompt
+        isOpen={showSubscription}
+        onClose={() => setShowSubscription(false)}
+      />
     </div>
   );
 }

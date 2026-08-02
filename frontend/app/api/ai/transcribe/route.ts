@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { transcribeAudio } from "@/lib/ai/transcription";
 import {
   enforceAudioQuota,
-  incrementAudioUsage,
+  recordAudioUsage,
   MAX_RECORDING_SECONDS
-} from "@/lib/ai/audio-usage";
+} from "@/lib/ai/entitlements";
 import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 
@@ -54,8 +54,9 @@ export async function POST(request: Request) {
         ? reportedDuration
         : Math.min(MAX_RECORDING_SECONDS, Math.round(candidate.size / 1536));
 
-    // Enforce the monthly 4-hour quota before spending the Deepgram call.
-    await enforceAudioQuota(supabase, userId, durationSeconds);
+    // Enforce the quota (free-tier 90 min OR subscription allotment) before
+    // spending the Deepgram call. Returns the active access/tier.
+    const access = await enforceAudioQuota(supabase, userId, durationSeconds);
 
     const text = await transcribeAudio(candidate);
 
@@ -66,8 +67,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Record usage only after a successful transcription.
-    await incrementAudioUsage(supabase, userId, durationSeconds);
+    // Record usage against the correct tier after a successful transcription.
+    await recordAudioUsage(supabase, userId, durationSeconds, access);
 
     return NextResponse.json({ text });
   } catch (error) {

@@ -5,7 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthStatus } from "@/components/auth/auth-status";
 import { NoteForm } from "@/components/note-form";
 import { NoteList } from "@/components/note-list";
+import { ComingSoonOverlay } from "@/components/ui/coming-soon-overlay";
 import { useAuth } from "@/lib/auth/auth-context";
+import { areFeaturesEnabled } from "@/lib/config/features";
 import { askNotesRequest, fetchNotes, searchNotesRequest } from "@/lib/notes-api";
 import type { Note } from "@/types/note";
 
@@ -218,7 +220,7 @@ export function NotesPage() {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
+          <div className="relative rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
             <div className="mb-5">
               <h2 className="text-2xl font-semibold text-ink dark:text-slate-100">Semantic search</h2>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -239,9 +241,11 @@ export function NotesPage() {
                 {searchError}
               </div>
             ) : null}
+
+            {!areFeaturesEnabled() ? <ComingSoonOverlay /> : null}
           </div>
 
-          <div className="rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
+          <div className="relative rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
             <div className="mb-5">
               <h2 className="text-2xl font-semibold text-ink dark:text-slate-100">Ask your notes</h2>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -265,6 +269,8 @@ export function NotesPage() {
             <div className="mt-5">
               <AnswerCard answer={answer} isLoading={isAsking} notes={answerSources} />
             </div>
+
+            {!areFeaturesEnabled() ? <ComingSoonOverlay /> : null}
           </div>
         </section>
 

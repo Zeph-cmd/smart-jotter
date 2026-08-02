@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { FundingBanner } from "@/components/ui/funding-banner";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AuthProvider } from "@/lib/auth/auth-context";
 import "./globals.css";
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <ThemeToggle />
               </div>
             </header>
+            <FundingBanner />
             {children}
           </div>
         </AuthProvider>

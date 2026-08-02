@@ -298,7 +298,7 @@ export async function transcribeAudioRequest(
       response.status === 401
         ? "Please sign in to transcribe audio."
         : response.status === 402
-          ? data.error ?? "Monthly audio limit reached."
+          ? data.error ?? "Audio limit reached. Please upgrade to continue."
           : data.error ?? "Could not transcribe audio right now.";
     throw new Error(message);
   }

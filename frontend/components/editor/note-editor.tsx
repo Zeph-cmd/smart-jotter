@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ComingSoonButton } from "@/components/ui/coming-soon-button";
 import type { SuggestionAction } from "@/types/note";
 
 type NoteEditorProps = {
@@ -85,18 +86,12 @@ export function NoteEditor({
 
         <div className="flex flex-wrap gap-2">
           {ACTIONS.map((item) => (
-            <button
+            <ComingSoonButton
               key={item.action}
-              type="button"
+              label={item.label}
+              isActive={suggestionAction === item.action}
               onClick={() => onSuggest(item.action)}
-              className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                suggestionAction === item.action
-                  ? "border-accent bg-blue-50 text-accent dark:bg-blue-500/20"
-                  : "border-line text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-              }`}
-            >
-              {item.label}
-            </button>
+            />
           ))}
         </div>
 
