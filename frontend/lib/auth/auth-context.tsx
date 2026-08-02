@@ -147,6 +147,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (error) {
           throw new Error(error.message || "Could not create your account right now.");
         }
+
+        // Immediately sign the user in so they can start using the app.
+        // With email confirmation disabled (see supabase/fix-login.sql) this
+        // always succeeds. If confirmation is still on, we surface a clear
+        // message instead of leaving the user in a confusing state.
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (signInError) {
+          throw new Error(
+            "Account created, but we couldn't sign you in automatically. " +
+              "Please log in with your email and password."
+          );
+        }
       }
     }),
     [isLoading, session, supabase, user]

@@ -29,7 +29,10 @@ export function AuthPanel() {
         await signIn(email, password);
       } else {
         await signUp(email, password);
-        setMessage("Account created. If email confirmation is enabled, check your inbox.");
+        // signUp() now signs the user in automatically, so on success the
+        // auth context will redirect to the app. The message below only shows
+        // briefly (or if auto-login failed and an error wasn't thrown).
+        setMessage("Welcome to Smart Jotter! Redirecting to your notes...");
       }
     } catch (caughtError) {
       setError(
