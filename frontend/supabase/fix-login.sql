@@ -26,10 +26,8 @@
 -- Safe to run multiple times — only updates rows where it is still NULL.
 -- ---------------------------------------------------------------------------
 update auth.users
-set email_confirmed_at = coalesce(email_confirmed_at, now()),
-    confirmed_at       = coalesce(confirmed_at, now())
-where email_confirmed_at is null
-   or confirmed_at is null;
+set email_confirmed_at = coalesce(email_confirmed_at, now())
+where email_confirmed_at is null;
 
 -- ---------------------------------------------------------------------------
 -- STEP 2: Disable "Confirm email" for future signups (auth config).
