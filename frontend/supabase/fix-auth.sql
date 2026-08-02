@@ -46,9 +46,11 @@ where email = 'yumpinizephaniah@gmail.com';
 --   * NEVER remove the WHERE clause. Without it you would set EVERY user's
 --     password to the same value and lock everyone out.
 --   * pgcrypto (already enabled by schema.sql) provides crypt() and gen_salt().
--- Uncomment the THREE lines below to reset the password, then run.
- update auth.users
- set encrypted_password = crypt('pass@code', gen_salt('bf'))
+-- To reset the password, uncomment ALL THREE lines below, then run.
+-- !! The WHERE clause is MANDATORY. Without it you will set EVERY user's
+-- !! password to the same value and lock the entire shared project out.
+-- update auth.users
+-- set encrypted_password = crypt('pass@code', gen_salt('bf'))
 -- where email = 'yumpinizephaniah@gmail.com';
 
 
