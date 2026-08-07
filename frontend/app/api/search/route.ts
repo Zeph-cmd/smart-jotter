@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { semanticSearch } from "@/lib/search/semantic-search";
+import { enforceCredits, recordAiUsage } from "@/lib/ai/credits";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -16,7 +17,12 @@ export async function GET(request: Request) {
 
   try {
     const { supabase, user } = await requireAuthenticatedClient();
-    const notes = await semanticSearch(supabase, requireUserId(user), query);
+    const userId = requireUserId(user);
+
+    const cost = await enforceCredits(supabase, userId, "semantic_search");
+    const notes = await semanticSearch(supabase, userId, query);
+    await recordAiUsage(supabase, userId, "semantic_search", cost);
+
     return NextResponse.json({ notes });
   } catch (error) {
     return handleRouteError("api-search-get", error, "Could not search your notes.", {

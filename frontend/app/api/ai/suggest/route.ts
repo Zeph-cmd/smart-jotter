@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { generateSuggestion } from "@/lib/ai/suggestions";
-import { requireAuthenticatedClient } from "@/lib/server/auth";
+import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
+import { enforceCredits, recordAiUsage } from "@/lib/ai/credits";
+import { suggestionActionToFeature } from "@/lib/credits";
 import type { SuggestionAction } from "@/types/note";
 
 export async function POST(request: Request) {
@@ -28,8 +30,22 @@ export async function POST(request: Request) {
   }
 
   try {
-    await requireAuthenticatedClient();
+    const { supabase, user } = await requireAuthenticatedClient();
+    const userId = requireUserId(user);
+
+    // "expand" is a premium helper but not part of the credit system yet —
+    // only simplify/improve/explain consume credits here.
+    const feature = suggestionActionToFeature(action);
+    const cost = feature
+      ? await enforceCredits(supabase, userId, feature)
+      : 0;
+
     const suggestion = await generateSuggestion({ action, content });
+
+    if (feature) {
+      await recordAiUsage(supabase, userId, feature, cost);
+    }
+
     return NextResponse.json({ suggestion });
   } catch (error) {
     return handleRouteError(

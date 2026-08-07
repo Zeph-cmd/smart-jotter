@@ -72,8 +72,10 @@ export function PlansBanner() {
                 <li className="flex gap-2">
                   <span className="font-bold">1.</span>
                   <span>
-                    Send your chosen amount to MoMo{" "}
-                    <span className="font-semibold">{PAYMENT_CONTACT.momoNumber}</span>
+                    Send your chosen amount to{" "}
+                    <span className="font-semibold">
+                      {PAYMENT_CONTACT.momoNetwork} MoMo {PAYMENT_CONTACT.momoNumber}
+                    </span>
                   </span>
                 </li>
                 <li className="flex gap-2">

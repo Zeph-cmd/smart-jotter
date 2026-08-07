@@ -50,6 +50,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
  * Developer payment contact details. Shown to users in the manual payment flow.
  */
 export const PAYMENT_CONTACT = {
+  /** Mobile-money network the MoMo number is registered on. */
+  momoNetwork: "MTN",
   /** MoMo number payments are sent to. */
   momoNumber: "0257711831",
   /** Registered name for the MoMo account. */
