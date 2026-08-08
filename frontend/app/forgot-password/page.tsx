@@ -9,12 +9,10 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
-    setError(null);
     setMessage(null);
 
     try {
@@ -25,32 +23,13 @@ export default function ForgotPasswordPage() {
         "If an account exists for that email, a password reset link is on its way. " +
           "Please check your inbox (and spam folder)."
       );
-    } catch (caughtError) {
-      // Detect Supabase's hourly email rate-limit (free tier caps at 2/hour).
-      const code =
-        (caughtError as { code?: string; status?: number })?.code ?? undefined;
-      const status =
-        (caughtError as { code?: string; status?: number })?.status ?? undefined;
-      const text =
-        caughtError instanceof Error ? caughtError.message.toLowerCase() : "";
-      const isRateLimited =
-        code === "over_email_send_rate_limit" ||
-        status === 429 ||
-        text.includes("over_email_send_rate_limit") ||
-        text.includes("rate limit");
-
-      if (isRateLimited) {
-        setError(
-          "We've hit our hourly email limit. Please try again in about an hour."
-        );
-      } else {
-        // For any other error, fall back to the generic confirmation so we
-        // don't leak which emails are registered.
-        setMessage(
-          "If an account exists for that email, a password reset link is on its way. " +
-            "Please check your inbox (and spam folder)."
-        );
-      }
+    } catch {
+      // Fall back to the generic confirmation so we don't leak which emails
+      // are registered.
+      setMessage(
+        "If an account exists for that email, a password reset link is on its way. " +
+          "Please check your inbox (and spam folder)."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -87,19 +66,7 @@ export default function ForgotPasswordPage() {
                 placeholder="you@example.com"
                 required
               />
-              <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-                Note: we're on a free email plan right now — only 2 password
-                reset requests can go out across the whole system per hour. If
-                you don't get an email, please wait about an hour and try
-                again.
-              </p>
             </div>
-
-            {error ? (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            ) : null}
 
             {message ? (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
