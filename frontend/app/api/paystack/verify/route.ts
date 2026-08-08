@@ -7,6 +7,8 @@ import {
   createServiceRoleSupabaseClient,
   extractMetadata,
   grantPlanEntitlements,
+  isTransactionProcessed,
+  markTransactionProcessed,
   verifyPaystackTransaction
 } from "@/lib/paystack/server";
 
@@ -57,9 +59,26 @@ export async function POST(request: Request) {
     // 3. Confirm the amount/currency matches the expected plan price.
     assertAmountMatches(data, metadata);
 
-    // 4. Grant entitlements via the service-role client (bypasses RLS).
+    // 4. Idempotency check — prevent replay attacks from re-granting
+    //    entitlements on an already-processed transaction.
     const serviceSupabase = createServiceRoleSupabaseClient();
+    const alreadyProcessed = await isTransactionProcessed(serviceSupabase, reference);
+
+    if (alreadyProcessed) {
+      // Already granted by this route or the webhook. Return success without
+      // re-running the grant (which would refresh the expiry date).
+      return NextResponse.json({
+        success: true,
+        message: "This payment has already been processed.",
+        duplicate: true
+      });
+    }
+
+    // 5. Grant entitlements via the service-role client (bypasses RLS).
     const result = await grantPlanEntitlements(serviceSupabase, metadata);
+
+    // 6. Record in the idempotency ledger.
+    await markTransactionProcessed(serviceSupabase, reference, metadata, data.amount, data.currency);
 
     // Best-effort: refresh the user's Supabase session so the client sees the
     // new entitlements immediately without a hard reload.

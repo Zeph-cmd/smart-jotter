@@ -5,6 +5,8 @@ import {
   createServiceRoleSupabaseClient,
   extractMetadata,
   grantPlanEntitlements,
+  isTransactionProcessed,
+  markTransactionProcessed,
   verifyPaystackTransaction,
   verifyWebhookSignature
 } from "@/lib/paystack/server";
@@ -76,10 +78,18 @@ export async function POST(request: Request) {
     const metadata = extractMetadata(data.metadata);
     assertAmountMatches(data, metadata);
 
-    // 7. Grant entitlements. This is idempotent — if /verify already processed
-    //    this transaction, we simply refresh the same values.
+    // 7. Idempotency check — skip if already processed by /verify or a
+    //    previous webhook delivery.
     const serviceSupabase = createServiceRoleSupabaseClient();
+    const alreadyProcessed = await isTransactionProcessed(serviceSupabase, reference);
+
+    if (alreadyProcessed) {
+      return NextResponse.json({ success: true, duplicate: true });
+    }
+
+    // 8. Grant entitlements, then record in the ledger.
     await grantPlanEntitlements(serviceSupabase, metadata);
+    await markTransactionProcessed(serviceSupabase, reference, metadata, data.amount, data.currency);
 
     return NextResponse.json({ success: true });
   } catch (error) {
