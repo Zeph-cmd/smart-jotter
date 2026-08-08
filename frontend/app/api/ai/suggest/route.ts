@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const action = body.action;
   const content = body.content?.trim() ?? "";
 
-  if (!action || !["expand", "simplify", "explain", "improve"].includes(action)) {
+  if (!action || !["simplify", "explain", "improve"].includes(action)) {
     return NextResponse.json(
       { error: "Valid action is required." },
       { status: 400 }
@@ -33,8 +33,6 @@ export async function POST(request: Request) {
     const { supabase, user } = await requireAuthenticatedClient();
     const userId = requireUserId(user);
 
-    // "expand" is a premium helper but not part of the credit system yet —
-    // only simplify/improve/explain consume credits here.
     const feature = suggestionActionToFeature(action);
     const cost = feature
       ? await enforceCredits(supabase, userId, feature)

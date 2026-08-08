@@ -12,8 +12,6 @@ type ChatCompletionsResponse = {
 };
 
 const ACTION_INSTRUCTIONS: Record<SuggestionAction, string> = {
-  expand:
-    "Expand the note with useful detail, keeping the original meaning and voice. Return only the revised note text.",
   simplify:
     "Simplify the note so it becomes clearer and easier to scan. Return only the revised note text.",
   explain:

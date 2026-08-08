@@ -405,7 +405,7 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
       <SubscriptionPrompt
         isOpen={showSubscription}
         onClose={() => setShowSubscription(false)}
-        title="You're out of AI credits"
+        variant="ai"
       />
     </main>
   );

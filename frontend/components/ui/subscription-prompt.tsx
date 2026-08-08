@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { PAYMENT_CONTACT, SUBSCRIPTION_PLANS } from "@/lib/config/plans";
+import {
+  AI_SUBSCRIPTION_PLANS,
+  PAYMENT_CONTACT,
+  SUBSCRIPTION_PLANS,
+  type AiSubscriptionPlan,
+  type SubscriptionPlan
+} from "@/lib/config/plans";
 
 type SubscriptionPromptProps = {
   /** Whether the modal/prompt is visible. */
@@ -10,19 +16,40 @@ type SubscriptionPromptProps = {
   onClose: () => void;
   /** Optional heading override. */
   title?: string;
+  /**
+   * Which track of plans to display. "speech" (default) shows the recording
+   * time plans; "ai" shows the AI Writing Assist credit plans.
+   */
+  variant?: "speech" | "ai";
 };
 
 /**
  * Manual payment flow shown when a user hits their free-tier or subscription
- * audio limit. Displays the two plans, MoMo instructions, and WhatsApp
- * confirmation steps. No in-app payment is processed — the developer activates
- * the subscription manually in Supabase after confirming payment.
+ * limit. Two variants share the same MoMo + WhatsApp flow:
+ *   - "speech": Speech-to-Text recording-time plans
+ *   - "ai": AI Writing Assist credit plans (Simplify/Improve/Explain/Search/Ask)
+ *
+ * No in-app payment is processed — the developer activates the subscription
+ * manually in Supabase after confirming payment.
  */
 export function SubscriptionPrompt({
   isOpen,
   onClose,
-  title = "You've reached your recording limit"
+  title,
+  variant = "speech"
 }: SubscriptionPromptProps) {
+  const isAi = variant === "ai";
+
+  const heading =
+    title ??
+    (isAi
+      ? "You're out of AI credits"
+      : "You've reached your recording limit");
+
+  const subtitle = isAi
+    ? "Upgrade your AI Writing Assist plan to keep using Smart Jotter's AI features."
+    : "Upgrade to keep recording with speech-to-text.";
+
   // Close on Escape key.
   useEffect(() => {
     if (!isOpen) {
@@ -63,10 +90,10 @@ export function SubscriptionPrompt({
               id="subscription-prompt-title"
               className="text-2xl font-semibold text-ink dark:text-slate-100"
             >
-              {title}
+              {heading}
             </h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Upgrade to keep recording with speech-to-text.
+              {subtitle}
             </p>
           </div>
           <button
@@ -92,36 +119,20 @@ export function SubscriptionPrompt({
           </button>
         </div>
 
+        {/* Section label for the relevant track */}
+        <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          {isAi ? "AI Writing Assist Plans" : "Speech-to-Text Plans"}
+        </p>
+
         {/* Plan cards */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {SUBSCRIPTION_PLANS.map((plan) => (
-            <div
-              key={plan.id}
-              className="rounded-2xl border border-line bg-slate-50 p-5 dark:bg-slate-950"
-            >
-              <div className="flex items-baseline justify-between">
-                <h3 className="text-lg font-semibold text-ink dark:text-slate-100">
-                  {plan.name}
-                </h3>
-                <span className="text-2xl font-bold text-accent">
-                  {plan.priceGhs} GHS
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                {plan.description}
-              </p>
-              <ul className="mt-3 space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
-                <li className="flex items-center gap-2">
-                  <span className="text-accent">✓</span>
-                  {plan.durationLabel} of recording
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-accent">✓</span>
-                  Valid for {plan.validityLabel}
-                </li>
-              </ul>
-            </div>
-          ))}
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          {isAi
+            ? AI_SUBSCRIPTION_PLANS.map((plan) => (
+                <AiPlanCard key={plan.id} plan={plan} />
+              ))
+            : SUBSCRIPTION_PLANS.map((plan) => (
+                <SpeechPlanCard key={plan.id} plan={plan} />
+              ))}
         </div>
 
         {/* Payment instructions */}
@@ -153,7 +164,8 @@ export function SubscriptionPrompt({
                 >
                   WhatsApp {PAYMENT_CONTACT.whatsappNumber}
                 </a>{" "}
-                for activation
+                and mention which {isAi ? "AI Writing Assist" : "Speech-to-Text"}{" "}
+                plan you paid for
               </span>
             </li>
           </ol>
@@ -171,6 +183,62 @@ export function SubscriptionPrompt({
           Got it
         </button>
       </div>
+    </div>
+  );
+}
+
+function SpeechPlanCard({ plan }: { plan: SubscriptionPlan }) {
+  return (
+    <div className="rounded-2xl border border-line bg-slate-50 p-5 dark:bg-slate-950">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-lg font-semibold text-ink dark:text-slate-100">
+          {plan.name}
+        </h3>
+        <span className="text-2xl font-bold text-accent">
+          {plan.priceGhs} GHS
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        {plan.description}
+      </p>
+      <ul className="mt-3 space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
+        <li className="flex items-center gap-2">
+          <span className="text-accent">✓</span>
+          {plan.durationLabel} of recording
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="text-accent">✓</span>
+          Valid for {plan.validityLabel}
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+function AiPlanCard({ plan }: { plan: AiSubscriptionPlan }) {
+  return (
+    <div className="rounded-2xl border border-line bg-slate-50 p-5 dark:bg-slate-950">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-lg font-semibold text-ink dark:text-slate-100">
+          {plan.name}
+        </h3>
+        <span className="text-2xl font-bold text-accent">
+          {plan.priceGhs} GHS
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        {plan.description}
+      </p>
+      <ul className="mt-3 space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
+        <li className="flex items-center gap-2">
+          <span className="text-accent">✓</span>
+          {plan.credits.toLocaleString()} AI credits
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="text-accent">✓</span>
+          Valid for {plan.validityLabel}
+        </li>
+      </ul>
     </div>
   );
 }

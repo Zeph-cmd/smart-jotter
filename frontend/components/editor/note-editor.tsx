@@ -20,7 +20,6 @@ const ACTIONS: Array<{
   action: SuggestionAction;
   label: string;
 }> = [
-  { action: "expand", label: "Expand" },
   { action: "simplify", label: "Simplify" },
   { action: "explain", label: "Explain" },
   { action: "improve", label: "Improve" }

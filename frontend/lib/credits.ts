@@ -40,9 +40,9 @@ export function getFeatureCost(feature: AiFeature): number {
 }
 
 /**
- * Maps the editor suggestion actions (which include "expand") to credit-
- * bearing AI features. "expand" is not in the credit system defined here, so
- * it maps to null and is skipped by the credit gate.
+ * Maps the editor suggestion actions (simplify / improve / explain) to their
+ * credit-bearing AI features. Unknown actions map to null and are skipped by
+ * the credit gate.
  */
 export function suggestionActionToFeature(
   action: string
