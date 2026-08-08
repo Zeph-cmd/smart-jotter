@@ -315,10 +315,27 @@ type ApiRequestOptions = {
   errorMessages?: {
     default: string;
     unauthorized?: string;
+    /** Message used when the API returns 402 Payment Required (credits/quota exhausted). */
+    paymentRequired?: string;
   };
   method?: "GET" | "POST" | "PATCH";
   retries?: number;
 };
+
+/**
+ * Error thrown by `apiRequest`. Carries the HTTP `status` so callers can react
+ * to specific codes — in particular 402 (credits/quota exhausted), which should
+ * open the subscription/MoMo prompt instead of showing a plain text message.
+ */
+export class ApiRequestError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
 
 async function apiRequest<TResponse>(
   input: string,
@@ -352,12 +369,18 @@ async function apiRequest<TResponse>(
     const friendlyMessage =
       response.status === 401
         ? options.errorMessages?.unauthorized ?? "Please sign in to continue."
-        : data.error ?? options.errorMessages?.default ?? "Request failed.";
+        : response.status === 402
+          ? options.errorMessages?.paymentRequired ??
+            data.error ??
+            "You've used all your credits. Upgrade to continue."
+          : data.error ?? options.errorMessages?.default ?? "Request failed.";
 
-    throw new Error(friendlyMessage);
+    throw new ApiRequestError(friendlyMessage, response.status);
   }
 
-  throw new Error(options.errorMessages?.default ?? "Request failed.");
+  throw new ApiRequestError(
+    options.errorMessages?.default ?? "Request failed."
+  );
 }
 
 function delay(durationMs: number) {

@@ -3,7 +3,7 @@ import { openAIRequest } from "@/lib/ai/openai";
 import { semanticSearch } from "@/lib/search/semantic-search";
 import type { Note } from "@/types/note";
 
-const ANSWER_MODEL = "gpt-4.1-mini";
+const ANSWER_MODEL = "gpt-4o-mini";
 
 type ChatCompletionsResponse = {
   choices: Array<{

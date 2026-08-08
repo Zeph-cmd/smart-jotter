@@ -9,7 +9,7 @@
  *
  * Flip this to `true` to enable all AI features for launch.
  */
-export const FEATURES_ENABLED = false;
+export const FEATURES_ENABLED = true;
 
 /**
  * Returns true if the premium AI features should be interactive.

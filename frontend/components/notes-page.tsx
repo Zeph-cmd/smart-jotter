@@ -6,9 +6,15 @@ import { AuthStatus } from "@/components/auth/auth-status";
 import { NoteForm } from "@/components/note-form";
 import { NoteList } from "@/components/note-list";
 import { ComingSoonOverlay } from "@/components/ui/coming-soon-overlay";
+import { SubscriptionPrompt } from "@/components/ui/subscription-prompt";
 import { useAuth } from "@/lib/auth/auth-context";
 import { areFeaturesEnabled } from "@/lib/config/features";
-import { askNotesRequest, fetchNotes, searchNotesRequest } from "@/lib/notes-api";
+import {
+  ApiRequestError,
+  askNotesRequest,
+  fetchNotes,
+  searchNotesRequest
+} from "@/lib/notes-api";
 import type { Note } from "@/types/note";
 
 const AnswerCard = dynamic(
@@ -48,6 +54,7 @@ export function NotesPage() {
   const [isAsking, setIsAsking] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [answerSources, setAnswerSources] = useState<Note[]>([]);
+  const [showSubscription, setShowSubscription] = useState(false);
   const searchCacheRef = useRef(new Map<string, Note[]>());
   const notesCacheKey = useMemo(
     () => `smart-jotter:notes-cache:${user?.id ?? "guest"}`,
@@ -71,9 +78,15 @@ export function NotesPage() {
         setDisplayedNotes(results);
         setIsSearchActive(true);
       } catch (caughtError) {
-        setSearchError(
-          caughtError instanceof Error ? caughtError.message : "Could not search notes."
-        );
+        // 402 = out of credits → surface the subscription/MoMo prompt.
+        if (caughtError instanceof ApiRequestError && caughtError.status === 402) {
+          setShowSubscription(true);
+          setSearchError(null);
+        } else {
+          setSearchError(
+            caughtError instanceof Error ? caughtError.message : "Could not search notes."
+          );
+        }
       } finally {
         setIsSearching(false);
       }
@@ -173,11 +186,17 @@ export function NotesPage() {
       setAnswer(result.answer);
       setAnswerSources(result.notes);
     } catch (caughtError) {
-      setAskError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Could not answer from your notes."
-      );
+      // 402 = out of credits → surface the subscription/MoMo prompt.
+      if (caughtError instanceof ApiRequestError && caughtError.status === 402) {
+        setShowSubscription(true);
+        setAskError(null);
+      } else {
+        setAskError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Could not answer from your notes."
+        );
+      }
     } finally {
       setIsAsking(false);
     }
@@ -222,9 +241,17 @@ export function NotesPage() {
         <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="relative rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
             <div className="mb-5">
-              <h2 className="text-2xl font-semibold text-ink dark:text-slate-100">Semantic search</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-2xl font-semibold text-ink dark:text-slate-100">Semantic search</h2>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                  Early access · 1 credit
+                </span>
+              </div>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Search by meaning instead of exact keywords. Results update as you type.
+              </p>
+              <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                You've got 30 free credits to try this — a limited early-access gift while we're getting started. More available soon via subscription.
               </p>
             </div>
 
@@ -247,9 +274,17 @@ export function NotesPage() {
 
           <div className="relative rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
             <div className="mb-5">
-              <h2 className="text-2xl font-semibold text-ink dark:text-slate-100">Ask your notes</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-2xl font-semibold text-ink dark:text-slate-100">Ask your notes</h2>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                  Early access · 2 credits
+                </span>
+              </div>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Get a concise answer based only on the notes you have saved.
+              </p>
+              <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                You've got 30 free credits to try this — a limited early-access gift while we're getting started. More available soon via subscription.
               </p>
             </div>
 
@@ -307,6 +342,12 @@ export function NotesPage() {
           />
         </section>
       </div>
+
+      <SubscriptionPrompt
+        isOpen={showSubscription}
+        onClose={() => setShowSubscription(false)}
+        title="You're out of AI credits"
+      />
     </main>
   );
 }

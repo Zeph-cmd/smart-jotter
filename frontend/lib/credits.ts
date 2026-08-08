@@ -6,9 +6,8 @@
  * usage page import from here so costs can never drift between the UI and the
  * backend.
  *
- * NOTE: Actual OpenAI calls remain disabled behind FEATURES_ENABLED
- * (see lib/config/features.ts). This module only defines costs; it does not
- * enable billing.
+ * ACTIVE: FEATURES_ENABLED is on (see lib/config/features.ts), so these
+ * costs are now enforced by every AI route via enforceCredits().
  */
 
 /** The five AI features that consume credits. */

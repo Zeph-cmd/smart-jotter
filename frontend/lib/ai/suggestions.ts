@@ -1,7 +1,7 @@
 import { openAIRequest } from "@/lib/ai/openai";
 import type { SuggestionAction } from "@/types/note";
 
-const SUGGESTION_MODEL = "gpt-4.1-mini";
+const SUGGESTION_MODEL = "gpt-4o-mini";
 
 type ChatCompletionsResponse = {
   choices: Array<{

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
 
 export function AuthPanel() {
@@ -106,6 +107,14 @@ export function AuthPanel() {
             minLength={6}
             required
           />
+          {mode === "login" ? (
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-slate-500 transition hover:text-ink dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              Forgot password?
+            </Link>
+          ) : null}
         </div>
 
         {error ? (

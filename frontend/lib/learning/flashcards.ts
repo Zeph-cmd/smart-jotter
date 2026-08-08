@@ -8,7 +8,7 @@ import type {
   ReviewPerformance
 } from "@/types/note";
 
-const FLASHCARD_MODEL = "gpt-4.1-mini";
+const FLASHCARD_MODEL = "gpt-4o-mini";
 
 type ChatCompletionsResponse = {
   choices: Array<{

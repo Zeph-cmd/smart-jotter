@@ -6,7 +6,12 @@
 -- Run this once in the Supabase SQL editor. It is idempotent (safe to re-run).
 --
 -- CREDIT MODEL:
---   credits_allotted = total credits the user's plan grants (0 until upgraded)
+--   credits_allotted = total credits the user's plan grants.
+--     DEFAULT IS 30 — TEMPORARY early-access starter grant for new signups
+--     (manual testing / early-access only). Once real subscriptions launch,
+--     credits should come from MANUAL activation after payment confirmation
+--     (via WhatsApp/MoMo), NOT automatic signup. At that point, change this
+--     default back to 0 and gate credits behind the activation flow.
 --   credits_used     = cumulative AI credits consumed
 --   Remaining = credits_allotted - credits_used
 --
@@ -17,8 +22,10 @@
 -- ----------------------------------------------------------------------------
 -- 1) Add credit columns to sj_user_entitlements
 -- ----------------------------------------------------------------------------
+-- NOTE: The default is 30 for the temporary early-access starter grant.
+-- See the CREDIT MODEL comment above. Set back to 0 once subscriptions launch.
 alter table public.sj_user_entitlements
-  add column if not exists credits_allotted integer not null default 0;
+  add column if not exists credits_allotted integer not null default 30;
 
 alter table public.sj_user_entitlements
   add column if not exists credits_used integer not null default 0;

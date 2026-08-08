@@ -103,6 +103,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
+  // ---------------------------------------------------------------------------
+  // TEMPORARY EARLY-ACCESS STARTER CREDITS
+  // ---------------------------------------------------------------------------
+  // Give every new signup 30 starter AI credits so they can try Simplify,
+  // Improve, Explain, Semantic Search, and Ask Your Notes.
+  //
+  // !!! TEMPORARY — MANUAL TESTING / EARLY ACCESS ONLY !!!
+  // Once real subscriptions launch, credit allotment should come from MANUAL
+  // activation after payment confirmation (via WhatsApp/MoMo), NOT automatic
+  // signup. At that point, either remove this block or change STARTER_CREDITS
+  // back to 0 and gate credits behind the activation flow.
+  // ---------------------------------------------------------------------------
+  const STARTER_CREDITS = 30;
+
+  if (data.user?.id) {
+    try {
+      await adminClient
+        .from("sj_user_entitlements")
+        .upsert(
+          { user_id: data.user.id, credits_allotted: STARTER_CREDITS },
+          { onConflict: "user_id" }
+        );
+    } catch (entitlementError) {
+      // Non-fatal: the user can still log in; credits can be added manually.
+      console.error(
+        "[signup] Failed to set starter credits:",
+        entitlementError
+      );
+    }
+  }
+
   return NextResponse.json({
     success: true,
     userId: data.user?.id ?? null,

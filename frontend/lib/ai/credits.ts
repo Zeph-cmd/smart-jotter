@@ -8,8 +8,8 @@
  * but tracks discrete "credits" instead of seconds. It reads/writes the same
  * sj_user_entitlements row plus the new sj_ai_usage_log table.
  *
- * DORMANT: Actual OpenAI calls stay disabled behind FEATURES_ENABLED. The
- * routes import these helpers now so flipping the flag later "just works".
+ * ACTIVE: FEATURES_ENABLED is on (see lib/config/features.ts), so the
+ * routes call enforceCredits() before each AI call and recordAiUsage() after.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";

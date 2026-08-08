@@ -8,11 +8,13 @@ import { NoteEditor } from "@/components/editor/note-editor";
 import { RelatedNotes } from "@/components/editor/related-notes";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
+  ApiRequestError,
   fetchNoteRequest,
   fetchRelatedNotesRequest,
   requestSuggestion,
   updateNoteRequest
 } from "@/lib/notes-api";
+import { SubscriptionPrompt } from "@/components/ui/subscription-prompt";
 import type { Note, RelatedNote, SuggestionAction } from "@/types/note";
 
 const SuggestionPanel = dynamic(
@@ -53,6 +55,7 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const [isSuggestionLoading, setIsSuggestionLoading] = useState(false);
   const [hasLoadedNote, setHasLoadedNote] = useState(false);
+  const [showSubscription, setShowSubscription] = useState(false);
   const lastSavedRef = useRef<DraftPayload>({ title: "", content: "" });
 
   const draftKey = useMemo(() => `smart-jotter:draft:${noteId}`, [noteId]);
@@ -239,11 +242,17 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
       setSuggestion(nextSuggestion);
     } catch (caughtError) {
       setSuggestion(null);
-      setSuggestionError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Could not generate a suggestion."
-      );
+      // 402 = out of credits → surface the subscription/MoMo prompt.
+      if (caughtError instanceof ApiRequestError && caughtError.status === 402) {
+        setShowSubscription(true);
+        setSuggestionError(null);
+      } else {
+        setSuggestionError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Could not generate a suggestion."
+        );
+      }
     } finally {
       setIsSuggestionLoading(false);
     }
@@ -392,6 +401,12 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
           />
         </section>
       </div>
+
+      <SubscriptionPrompt
+        isOpen={showSubscription}
+        onClose={() => setShowSubscription(false)}
+        title="You're out of AI credits"
+      />
     </main>
   );
 }

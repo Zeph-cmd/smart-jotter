@@ -94,6 +94,9 @@ export function NoteEditor({
             />
           ))}
         </div>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          AI tools use credits (1 each). You've got 30 free credits as a limited early-access gift — more available soon via subscription.
+        </p>
 
         {softHint ? (
           <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-100">

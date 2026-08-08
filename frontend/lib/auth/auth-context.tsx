@@ -14,10 +14,12 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 type AuthContextValue = {
   isLoading: boolean;
   resendConfirmation: (email: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   user: User | null;
 };
 
@@ -161,6 +163,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
             "Account created, but we couldn't sign you in automatically. " +
               "Please log in with your email and password."
           );
+        }
+      },
+      async resetPassword(email) {
+        if (!supabase) {
+          throw new Error("Authentication is not configured yet.");
+        }
+
+        // Use the current origin as the redirect target so the flow works in
+        // both local development and production. The /reset-password route
+        // must be listed in Supabase's allowed redirect URLs.
+        const redirectTo =
+          typeof window !== "undefined"
+            ? `${window.location.origin}/reset-password`
+            : undefined;
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo
+        });
+
+        if (error) {
+          // Preserve the original Supabase error object so callers can inspect
+          // its status / code (e.g. to detect the 429 rate-limit response).
+          throw error;
+        }
+      },
+      async updatePassword(password) {
+        if (!supabase) {
+          throw new Error("Authentication is not configured yet.");
+        }
+
+        const { error } = await supabase.auth.updateUser({ password });
+
+        if (error) {
+          throw new Error(error.message || "Could not update your password.");
         }
       }
     }),
