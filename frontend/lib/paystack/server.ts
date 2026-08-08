@@ -1,0 +1,327 @@
+/**
+ * Paystack server-side helpers.
+ *
+ * Shared by:
+ *   - /api/paystack/verify  (client-initiated verification after the popup)
+ *   - /api/paystack/webhook (backup safety net for charge.success events)
+ *
+ * Security:
+ *   - Transactions are NEVER trusted from the client alone. We always call
+ *     Paystack's verify endpoint with the secret key before granting anything.
+ *   - The webhook additionally validates the HMAC signature using the secret.
+ */
+
+import { createClient } from "@supabase/supabase-js";
+import { getPaystackSecretKey, getSupabaseServiceRoleKey, getSupabaseUrl } from "@/lib/env";
+import { logServerError } from "@/lib/server/errors";
+import {
+  AI_SUBSCRIPTION_PLANS,
+  SUBSCRIPTION_PLANS,
+  type AiPlanId,
+  type PlanId
+} from "@/lib/config/plans";
+import type { PaystackMetadata } from "@/lib/paystack/types";
+
+// Re-export so existing server-side callers can import everything from
+// "@/lib/paystack/server" without reaching into the types module.
+export type { PaystackMetadata } from "@/lib/paystack/types";
+
+/* -------------------------------------------------------------------------- */
+/* Types                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/** Subset of Paystack's transaction.verify response that we depend on. */
+type PaystackVerificationData = {
+  status: boolean;
+  amount: number; // in kobo/cent (smallest currency unit)
+  currency: string;
+  reference: string;
+  customer: {
+    email: string;
+    customer_code?: string;
+  };
+  metadata?: unknown;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Admin Supabase client                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Builds a service-role Supabase client that bypasses RLS. Used to update
+ * entitlements after a verified payment. This mirrors the pattern in the
+ * signup route.
+ */
+export function createServiceRoleSupabaseClient() {
+  return createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Verify                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Calls Paystack's transaction.verify endpoint.
+ *
+ * Docs: https://paystack.com/docs/api/transaction/#verify
+ *
+ * Returns the normalised verification data on success, or throws on any
+ * non-success / untrusted response.
+ */
+export async function verifyPaystackTransaction(reference: string): Promise<PaystackVerificationData> {
+  const secret = getPaystackSecretKey();
+
+  const response = await fetch(
+    `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        Accept: "application/json"
+      },
+      cache: "no-store"
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(
+      `Paystack verify HTTP ${response.status}: ${text || response.statusText}`
+    );
+  }
+
+  const json = (await response.json()) as {
+    status: boolean;
+    message?: string;
+    data?: Partial<PaystackVerificationData> & { status?: string };
+  };
+
+  // Paystack wraps the real verification in json.data.status === "success".
+  if (!json.status || !json.data || json.data.status !== "success") {
+    throw new Error(
+      `Paystack transaction not successful: ${json.message ?? "unknown error"}`
+    );
+  }
+
+  const data = json.data;
+  const amount = typeof data.amount === "number" ? data.amount : Number(data.amount);
+
+  return {
+    status: true,
+    amount,
+    currency: data.currency ?? "GHS",
+    reference: data.reference ?? reference,
+    customer: {
+      email: data.customer?.email ?? "",
+      customer_code: data.customer?.customer_code
+    },
+    metadata: data.metadata
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Plan validation (amount + metadata sanity check)                           */
+/* -------------------------------------------------------------------------- */
+
+/** Returns the expected price (in major currency units, e.g. GHS) for a plan. */
+function getPlanPriceGhs(planType: "stt" | "ai", planId: PlanId | AiPlanId): number {
+  if (planType === "stt") {
+    const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
+    if (!plan) {
+      throw new Error(`Unknown Speech-to-Text plan: ${planId}`);
+    }
+    return plan.priceGhs;
+  }
+
+  const plan = AI_SUBSCRIPTION_PLANS.find((p) => p.id === planId);
+  if (!plan) {
+    throw new Error(`Unknown AI Writing Assist plan: ${planId}`);
+  }
+  return plan.priceGhs;
+}
+
+/**
+ * Safely extracts and validates the plan metadata attached to the transaction.
+ * Throws if the metadata is missing or references an unknown plan.
+ */
+export function extractMetadata(raw: unknown): PaystackMetadata {
+  const meta = raw as Partial<PaystackMetadata> | undefined;
+
+  if (!meta || typeof meta !== "object") {
+    throw new Error("Transaction metadata is missing.");
+  }
+
+  const userId = meta.user_id;
+  const planType = meta.plan_type;
+  const planId = meta.plan_id;
+
+  if (!userId || typeof userId !== "string") {
+    throw new Error("Transaction metadata is missing user_id.");
+  }
+
+  if (!planId || typeof planId !== "string") {
+    throw new Error("Transaction metadata is missing plan_id.");
+  }
+
+  if (planType !== "stt" && planType !== "ai") {
+    throw new Error(`Invalid plan_type in metadata: ${String(planType)}`);
+  }
+
+  if (planType === "stt") {
+    if (!SUBSCRIPTION_PLANS.some((p) => p.id === planId)) {
+      throw new Error(`Invalid Speech-to-Text plan_id: ${String(planId)}`);
+    }
+  } else {
+    if (!AI_SUBSCRIPTION_PLANS.some((p) => p.id === planId)) {
+      throw new Error(`Invalid AI Writing Assist plan_id: ${String(planId)}`);
+    }
+  }
+
+  return { user_id: userId, plan_type: planType, plan_id: planId };
+}
+
+/**
+ * Confirms the verified transaction's amount matches the expected plan price.
+ * Paystack amounts are in the smallest currency unit (kobo/cent), so 50 GHS
+ * is returned as 5000.
+ */
+export function assertAmountMatches(
+  data: PaystackVerificationData,
+  metadata: PaystackMetadata
+) {
+  const expectedGhs = getPlanPriceGhs(metadata.plan_type, metadata.plan_id);
+  const expectedMinor = Math.round(expectedGhs * 100);
+
+  if (data.amount !== expectedMinor) {
+    throw new Error(
+      `Amount mismatch: paid ${data.amount} minor units, expected ${expectedMinor} (${expectedGhs} GHS).`
+    );
+  }
+
+  if (data.currency.toUpperCase() !== "GHS") {
+    throw new Error(`Currency mismatch: paid in ${data.currency}, expected GHS.`);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Grant entitlements                                                          */
+/* -------------------------------------------------------------------------- */
+
+/** Returns YYYY-MM-DD `validityDays` from now (UTC). */
+function computeExpiryDate(validityDays: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + validityDays);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Updates `sj_user_entitlements` for the paid plan. This is the single source
+ * of truth for granting access after a verified Paystack transaction.
+ *
+ * Idempotent: it always SETS the plan columns (not increments), so a duplicate
+ * verify / webhook call simply refreshes the same entitlements rather than
+ * stacking.
+ */
+export async function grantPlanEntitlements(
+  supabase: ReturnType<typeof createServiceRoleSupabaseClient>,
+  metadata: PaystackMetadata
+): Promise<{ activated: "stt" | "ai"; planId: PlanId | AiPlanId }> {
+  if (metadata.plan_type === "stt") {
+    const plan = SUBSCRIPTION_PLANS.find((p) => p.id === metadata.plan_id)!;
+    const minutesAllotted = plan.durationSeconds / 60;
+
+    const { error } = await supabase
+      .from("sj_user_entitlements")
+      .upsert(
+        {
+          user_id: metadata.user_id,
+          subscription_status: "active",
+          subscription_expiry: computeExpiryDate(plan.validityDays),
+          subscription_minutes_allotted: minutesAllotted,
+          subscription_minutes_used: 0
+        },
+        { onConflict: "user_id" }
+      );
+
+    if (error) {
+      throw new Error(
+        `Could not activate Speech-to-Text plan: ${error.message}`
+      );
+    }
+
+    return { activated: "stt", planId: plan.id };
+  }
+
+  // AI Writing Assist plan
+  const plan = AI_SUBSCRIPTION_PLANS.find((p) => p.id === metadata.plan_id)!;
+
+  const { error } = await supabase
+    .from("sj_user_entitlements")
+    .upsert(
+      {
+        user_id: metadata.user_id,
+        ai_subscription_status: "active",
+        ai_subscription_expiry: computeExpiryDate(plan.validityDays),
+        credits_allotted: plan.credits,
+        credits_used: 0
+      },
+      { onConflict: "user_id" }
+    );
+
+  if (error) {
+    throw new Error(
+      `Could not activate AI Writing Assist plan: ${error.message}`
+    );
+  }
+
+  return { activated: "ai", planId: plan.id };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Webhook signature                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Verifies a Paystack webhook signature (HMAC-SHA512) using the secret key.
+ *
+ * Docs: https://paystack.com/docs/webhooks/
+ *
+ * The signature header looks like:
+ *   x-paystack-signature: <hmac hex>
+ *
+ * and is computed over the raw request body with the secret key.
+ *
+ * Uses Node's built-in crypto (available on the server in Next.js route
+ * handlers running on Node runtime — these routes are not edge).
+ */
+export async function verifyWebhookSignature(
+  rawBody: string,
+  signatureHeader: string | null
+): Promise<boolean> {
+  if (!signatureHeader) {
+    return false;
+  }
+
+  const crypto = await import("node:crypto");
+  const secret = getPaystackSecretKey();
+
+  const computed = crypto
+    .createHmac("sha512", secret)
+    .update(rawBody)
+    .digest("hex");
+
+  // Use timingSafeEqual to avoid trivial string-comparison leaks.
+  try {
+    const a = Buffer.from(computed, "utf8");
+    const b = Buffer.from(signatureHeader, "utf8");
+    if (a.length !== b.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(a, b);
+  } catch (error) {
+    logServerError("paystack-webhook-signature", error);
+    return false;
+  }
+}

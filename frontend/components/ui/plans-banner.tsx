@@ -6,6 +6,16 @@ import {
   PAYMENT_CONTACT,
   SUBSCRIPTION_PLANS
 } from "@/lib/config/plans";
+import { useAuth } from "@/lib/auth/auth-context";
+import { payWithPaystack } from "@/lib/paystack/client";
+import type { PaystackMetadata } from "@/lib/paystack/types";
+
+type PlanType = "stt" | "ai";
+
+type PaymentStatus = {
+  state: "idle" | "paying" | "success" | "error";
+  message?: string;
+};
 
 /**
  * A green banner shown app-wide. When clicked, it expands to reveal the two
@@ -16,7 +26,8 @@ import {
  *      (ai_subscription_status)
  *
  * The two are independent purchases; a user can subscribe to either, both,
- * or neither. Both reuse the same MoMo + WhatsApp manual payment flow.
+ * or neither. Both use the Paystack payment popup (instant activation), with
+ * a manual MoMo + WhatsApp option as fallback.
  */
 export function PlansBanner() {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -55,37 +66,22 @@ export function PlansBanner() {
                 Free tier gives you 90 minutes of recording. Upgrade for more time:
               </p>
 
-              {/* Plan cards */}
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 {SUBSCRIPTION_PLANS.map((plan) => (
-                  <div
+                  <PlanCard
                     key={plan.id}
-                    className="rounded-2xl border border-emerald-400/50 bg-white/10 p-5 backdrop-blur-sm"
-                  >
-                    <div className="flex items-baseline justify-between">
-                      <h3 className="text-lg font-semibold">{plan.name}</h3>
-                      <span className="text-2xl font-bold">{plan.priceGhs} GHS</span>
-                    </div>
-                    <p className="mt-2 text-sm text-emerald-50">{plan.description}</p>
-                    <ul className="mt-3 space-y-1.5 text-sm text-emerald-50">
-                      <li className="flex items-center gap-2">
-                        <span aria-hidden="true">✓</span>
-                        {plan.durationLabel} of recording
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span aria-hidden="true">✓</span>
-                        Valid for {plan.validityLabel}
-                      </li>
-                    </ul>
-                  </div>
+                    planType="stt"
+                    planId={plan.id}
+                    name={plan.name}
+                    priceGhs={plan.priceGhs}
+                    description={plan.description}
+                    features={[
+                      `${plan.durationLabel} of recording`,
+                      `Valid for ${plan.validityLabel}`
+                    ]}
+                  />
                 ))}
               </div>
-
-              {/* Payment instructions */}
-              <PaymentInstructions
-                label="Speech-to-Text"
-                amounts={SUBSCRIPTION_PLANS.map((p) => p.priceGhs)}
-              />
             </section>
 
             {/* Divider */}
@@ -103,37 +99,22 @@ export function PlansBanner() {
                 Notes. Free starter grant is 60 credits.
               </p>
 
-              {/* Plan cards */}
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 {AI_SUBSCRIPTION_PLANS.map((plan) => (
-                  <div
+                  <PlanCard
                     key={plan.id}
-                    className="rounded-2xl border border-emerald-400/50 bg-white/10 p-5 backdrop-blur-sm"
-                  >
-                    <div className="flex items-baseline justify-between">
-                      <h3 className="text-lg font-semibold">{plan.name}</h3>
-                      <span className="text-2xl font-bold">{plan.priceGhs} GHS</span>
-                    </div>
-                    <p className="mt-2 text-sm text-emerald-50">{plan.description}</p>
-                    <ul className="mt-3 space-y-1.5 text-sm text-emerald-50">
-                      <li className="flex items-center gap-2">
-                        <span aria-hidden="true">✓</span>
-                        {plan.credits.toLocaleString()} AI credits
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span aria-hidden="true">✓</span>
-                        Valid for {plan.validityLabel}
-                      </li>
-                    </ul>
-                  </div>
+                    planType="ai"
+                    planId={plan.id}
+                    name={plan.name}
+                    priceGhs={plan.priceGhs}
+                    description={plan.description}
+                    features={[
+                      `${plan.credits.toLocaleString()} AI credits`,
+                      `Valid for ${plan.validityLabel}`
+                    ]}
+                  />
                 ))}
               </div>
-
-              {/* Payment instructions */}
-              <PaymentInstructions
-                label="AI Writing Assist"
-                amounts={AI_SUBSCRIPTION_PLANS.map((p) => p.priceGhs)}
-              />
             </section>
           </div>
         </div>
@@ -142,29 +123,151 @@ export function PlansBanner() {
   );
 }
 
-/**
- * Shared MoMo + WhatsApp payment instructions block. `label` and `amounts`
- * tailor the copy so the user states which plan (and amount) they're paying for.
- */
-function PaymentInstructions({
-  label,
-  amounts
-}: {
-  label: string;
-  amounts: number[];
-}) {
-  const amountList = amounts.map((a) => `${a} GHS`).join(" or ");
+/* -------------------------------------------------------------------------- */
+/* Plan card with Pay with Paystack button                                    */
+/* -------------------------------------------------------------------------- */
+
+type PlanCardProps = {
+  planType: PlanType;
+  planId: string;
+  name: string;
+  priceGhs: number;
+  description: string;
+  features: string[];
+};
+
+function PlanCard({
+  planType,
+  planId,
+  name,
+  priceGhs,
+  description,
+  features
+}: PlanCardProps) {
+  const { user } = useAuth();
+  const [status, setStatus] = useState<PaymentStatus>({ state: "idle" });
+  const [showMomo, setShowMomo] = useState(false);
+
+  async function handlePay() {
+    if (!user) {
+      setStatus({
+        state: "error",
+        message: "Please sign in first to subscribe."
+      });
+      return;
+    }
+
+    setStatus({ state: "paying" });
+
+    try {
+      const metadata: PaystackMetadata = {
+        user_id: user.id,
+        plan_type: planType,
+        plan_id: planId as PaystackMetadata["plan_id"]
+      };
+
+      // 1. Open the Paystack popup.
+      const { reference } = await payWithPaystack({
+        email: user.email ?? "",
+        amountGhs: priceGhs,
+        metadata
+      });
+
+      // 2. Verify server-side and activate entitlements.
+      const res = await fetch("/api/paystack/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference })
+      });
+
+      const data = (await res.json()) as { success?: boolean; message?: string; error?: string };
+
+      if (res.ok && data.success) {
+        setStatus({
+          state: "success",
+          message: data.message ?? "Subscription activated successfully!"
+        });
+      } else {
+        setStatus({
+          state: "error",
+          message: data.error ?? "Verification failed. If you were charged, please contact support."
+        });
+      }
+    } catch (error) {
+      setStatus({
+        state: "error",
+        message: error instanceof Error ? error.message : "Payment failed. Please try again."
+      });
+    }
+  }
 
   return (
-    <div className="mt-5 rounded-2xl border border-emerald-400/40 bg-emerald-700/50 p-5">
+    <div className="flex flex-col rounded-2xl border border-emerald-400/50 bg-white/10 p-5 backdrop-blur-sm">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-lg font-semibold">{name}</h3>
+        <span className="text-2xl font-bold">{priceGhs} GHS</span>
+      </div>
+      <p className="mt-2 text-sm text-emerald-50">{description}</p>
+      <ul className="mt-3 space-y-1.5 text-sm text-emerald-50">
+        {features.map((f) => (
+          <li key={f} className="flex items-center gap-2">
+            <span aria-hidden="true">✓</span>
+            {f}
+          </li>
+        ))}
+      </ul>
+
+      {/* Status messages */}
+      {status.state === "success" ? (
+        <div className="mt-4 rounded-lg bg-emerald-900/60 px-4 py-3 text-sm font-medium text-emerald-50">
+          ✓ {status.message}
+        </div>
+      ) : null}
+      {status.state === "error" ? (
+        <div className="mt-4 rounded-lg bg-red-900/60 px-4 py-3 text-sm font-medium text-red-50">
+          ✕ {status.message}
+        </div>
+      ) : null}
+
+      {/* Pay with Paystack */}
+      <button
+        type="button"
+        onClick={handlePay}
+        disabled={status.state === "paying"}
+        className="mt-4 w-full rounded-lg bg-white px-4 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {status.state === "paying" ? "Processing…" : `Pay ${priceGhs} GHS with Paystack`}
+      </button>
+
+      {/* MoMo fallback toggle */}
+      <button
+        type="button"
+        onClick={() => setShowMomo((v) => !v)}
+        className="mt-3 text-center text-xs text-emerald-100 underline hover:text-white"
+      >
+        Prefer to pay via Mobile Money instead?
+      </button>
+
+      {showMomo ? <MoMoInstructions /> : null}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* MoMo + WhatsApp fallback instructions (collapsible)                        */
+/* -------------------------------------------------------------------------- */
+
+function MoMoInstructions() {
+  return (
+    <div className="mt-3 rounded-2xl border border-emerald-400/40 bg-emerald-700/50 p-4">
       <h3 className="text-sm font-semibold uppercase tracking-wide">
-        How to pay — {label}
+        Manual Mobile Money payment
       </h3>
       <ol className="mt-3 space-y-2 text-sm text-emerald-50">
         <li className="flex gap-2">
           <span className="font-bold">1.</span>
           <span>
-            Send {amountList} to{" "}
+            Send to{" "}
             <span className="font-semibold">
               {PAYMENT_CONTACT.momoNetwork} MoMo {PAYMENT_CONTACT.momoNumber}
             </span>
@@ -193,11 +296,11 @@ function PaymentInstructions({
             >
               WhatsApp {PAYMENT_CONTACT.whatsappNumber}
             </a>{" "}
-            and mention which {label} plan you paid for
+            with the plan name
           </span>
         </li>
       </ol>
-      <p className="mt-4 text-xs text-emerald-100">
+      <p className="mt-3 text-xs text-emerald-100">
         Activation is manual — you'll be unlocked shortly after sending the
         screenshot.
       </p>
