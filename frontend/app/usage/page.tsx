@@ -118,7 +118,7 @@ export default function UsagePage() {
             {/* Plan / subscription summary */}
             <section className="rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
               <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                Plan
+                AI Writing Assist Plan
               </h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-3">
                 <div>
@@ -131,9 +131,15 @@ export default function UsagePage() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                    Subscription
+                    Status
                   </p>
-                  <p className="mt-1 text-lg font-semibold capitalize text-ink dark:text-slate-100">
+                  <p
+                    className={`mt-1 text-lg font-semibold capitalize ${
+                      summary.subscriptionStatus === "active"
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-ink dark:text-slate-100"
+                    }`}
+                  >
                     {summary.subscriptionStatus}
                   </p>
                 </div>
@@ -164,6 +170,12 @@ export default function UsagePage() {
                   emphasize
                 />
               </div>
+
+              {/* Visual usage bar */}
+              <UsageBar
+                used={summary.creditsUsed}
+                allotted={summary.creditsAllotted}
+              />
             </section>
 
             {/* Per-feature usage table */}
@@ -212,6 +224,47 @@ export default function UsagePage() {
         ) : null}
       </div>
     </main>
+  );
+}
+
+function UsageBar({ used, allotted }: { used: number; allotted: number }) {
+  const safeAllotted = Math.max(1, allotted);
+  const percent = Math.min(100, Math.round((used / safeAllotted) * 100));
+  const remaining = Math.max(0, allotted - used);
+
+  // Color guidance: green < 50%, amber 50–79%, red ≥ 80%
+  const barColor =
+    percent >= 80
+      ? "bg-red-500"
+      : percent >= 50
+        ? "bg-amber-500"
+        : "bg-emerald-500";
+
+  const guidance =
+    remaining === 0
+      ? "You've used all your credits. Subscribe to an AI Writing Assist plan to keep going."
+      : percent >= 80
+        ? "Heads up — you're almost out of credits. Consider upgrading soon."
+        : percent >= 50
+          ? "You're halfway through your credits. Pace yourself or top up soon."
+          : "You're in good shape — plenty of credits left.";
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <span>{percent}% used</span>
+        <span>{remaining.toLocaleString()} remaining</span>
+      </div>
+      <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div
+          className={`h-full rounded-full transition-all ${barColor}`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        {guidance}
+      </p>
+    </div>
   );
 }
 

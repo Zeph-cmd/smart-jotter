@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ComingSoonButton } from "@/components/ui/coming-soon-button";
 import type { SuggestionAction } from "@/types/note";
 
@@ -94,7 +95,15 @@ export function NoteEditor({
           ))}
         </div>
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          AI tools use credits (1 each). You've got 60 free credits as a limited early-access gift — more available soon via subscription.
+          AI tools use credits (1 each). You've got 60 free credits as a limited
+          early-access gift — more available via an{" "}
+          <Link href="/usage" className="font-medium text-accent underline hover:text-accent/80">
+            AI Writing Assist plan
+          </Link>
+          .{" "}
+          <Link href="/usage" className="font-medium text-accent underline hover:text-accent/80">
+            View your usage →
+          </Link>
         </p>
 
         {softHint ? (

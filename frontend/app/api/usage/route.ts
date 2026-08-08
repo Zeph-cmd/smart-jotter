@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { getAiCredits, getUsageByFeature } from "@/lib/ai/credits";
-import { getEntitlements } from "@/lib/ai/entitlements";
 import { FEATURE_CREDIT_COSTS, FEATURE_LABELS, type AiFeature } from "@/lib/credits";
 
 /**
@@ -17,9 +16,8 @@ export async function GET() {
     const { supabase, user } = await requireAuthenticatedClient();
     const userId = requireUserId(user);
 
-    const [credits, entitlements, usageByFeature] = await Promise.all([
+    const [credits, usageByFeature] = await Promise.all([
       getAiCredits(supabase, userId),
-      getEntitlements(supabase, userId),
       getUsageByFeature(supabase, userId)
     ]);
 
@@ -37,9 +35,9 @@ export async function GET() {
     }));
 
     return NextResponse.json({
-      planName: entitlements.subscription_status === "active" ? "Paid plan" : "Free",
-      subscriptionStatus: entitlements.subscription_status,
-      subscriptionExpiry: entitlements.subscription_expiry,
+      planName: credits.ai_subscription_status === "active" ? "AI Writing Assist plan" : "Free starter",
+      subscriptionStatus: credits.ai_subscription_status,
+      subscriptionExpiry: credits.ai_subscription_expiry,
       creditsAllotted: credits.credits_allotted,
       creditsUsed: credits.credits_used,
       creditsRemaining: credits.remaining,
