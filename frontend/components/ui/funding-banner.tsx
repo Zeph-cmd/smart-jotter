@@ -6,7 +6,7 @@ import { useState } from "react";
  * A slim banner shown app-wide while Smart Jotter is in early access.
  *
  * AI features (Simplify, Improve, Explain, Semantic Search, Ask Your Notes)
- * are now FUNCTIONAL. Every new account gets 30 starter credits as a limited
+ * are now FUNCTIONAL. Every new account gets 60 starter credits as a limited
  * early-access gift. This banner frames that generosity — it is NOT a permanent
  * free tier. Once credits run out, users are prompted to subscribe via MoMo.
  *
@@ -25,7 +25,7 @@ export function FundingBanner() {
         aria-expanded={isExpanded}
       >
         <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-white" />
-        {isExpanded ? "Hide details" : "AI features are live — 30 free credits inside"}
+        {isExpanded ? "Hide details" : "AI features are live — 60 free credits inside"}
       </button>
 
       {/* Expanded explanation */}
@@ -33,7 +33,7 @@ export function FundingBanner() {
         <div className="border-t border-emerald-500/40 px-4 py-6 sm:px-6">
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-              You've got 30 free credits to try Smart Jotter's AI
+              You've got 60 free credits to try Smart Jotter's AI
             </h2>
             <p className="mt-2 text-sm text-emerald-50 sm:text-base">
               A limited early-access gift while we're getting started. Use

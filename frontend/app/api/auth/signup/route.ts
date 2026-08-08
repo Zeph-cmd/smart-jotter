@@ -106,7 +106,7 @@ export async function POST(request: Request) {
   // ---------------------------------------------------------------------------
   // TEMPORARY EARLY-ACCESS STARTER CREDITS
   // ---------------------------------------------------------------------------
-  // Give every new signup 30 starter AI credits so they can try Simplify,
+  // Give every new signup 60 starter AI credits so they can try Simplify,
   // Improve, Explain, Semantic Search, and Ask Your Notes.
   //
   // !!! TEMPORARY — MANUAL TESTING / EARLY ACCESS ONLY !!!
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
   // signup. At that point, either remove this block or change STARTER_CREDITS
   // back to 0 and gate credits behind the activation flow.
   // ---------------------------------------------------------------------------
-  const STARTER_CREDITS = 30;
+  const STARTER_CREDITS = 60;
 
   if (data.user?.id) {
     try {

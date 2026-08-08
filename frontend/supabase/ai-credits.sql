@@ -7,7 +7,7 @@
 --
 -- CREDIT MODEL:
 --   credits_allotted = total credits the user's plan grants.
---     DEFAULT IS 30 — TEMPORARY early-access starter grant for new signups
+--     DEFAULT IS 60 — TEMPORARY early-access starter grant for new signups
 --     (manual testing / early-access only). Once real subscriptions launch,
 --     credits should come from MANUAL activation after payment confirmation
 --     (via WhatsApp/MoMo), NOT automatic signup. At that point, change this
@@ -22,10 +22,10 @@
 -- ----------------------------------------------------------------------------
 -- 1) Add credit columns to sj_user_entitlements
 -- ----------------------------------------------------------------------------
--- NOTE: The default is 30 for the temporary early-access starter grant.
+-- NOTE: The default is 60 for the temporary early-access starter grant.
 -- See the CREDIT MODEL comment above. Set back to 0 once subscriptions launch.
 alter table public.sj_user_entitlements
-  add column if not exists credits_allotted integer not null default 30;
+  add column if not exists credits_allotted integer not null default 60;
 
 alter table public.sj_user_entitlements
   add column if not exists credits_used integer not null default 0;
