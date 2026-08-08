@@ -251,7 +251,7 @@ export function NotesPage() {
                 Search by meaning instead of exact keywords. Results update as you type.
               </p>
               <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
-                You've got 30 free credits to try this — a limited early-access gift while we're getting started. More available soon via subscription.
+                You've got 60 free credits to try this — a limited early-access gift while we're getting started. More available soon via subscription.
               </p>
             </div>
 
@@ -284,7 +284,7 @@ export function NotesPage() {
                 Get a concise answer based only on the notes you have saved.
               </p>
               <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
-                You've got 30 free credits to try this — a limited early-access gift while we're getting started. More available soon via subscription.
+                You've got 60 free credits to try this — a limited early-access gift while we're getting started. More available soon via subscription.
               </p>
             </div>
 
