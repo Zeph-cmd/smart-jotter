@@ -115,8 +115,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw new Error("Authentication is not configured yet.");
         }
 
+        // Prefer the configured site URL so email links always point at the
+        // canonical origin, regardless of where the page is loaded from.
         const emailRedirectTo =
-          typeof window !== "undefined" ? window.location.origin : undefined;
+          process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
+          (typeof window !== "undefined" ? window.location.origin : undefined);
 
         const { error } = await supabase.auth.resend({
           type: "signup",
@@ -170,13 +173,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw new Error("Authentication is not configured yet.");
         }
 
-        // Use the current origin as the redirect target so the flow works in
-        // both local development and production. The /reset-password route
-        // must be listed in Supabase's allowed redirect URLs.
-        const redirectTo =
-          typeof window !== "undefined"
-            ? `${window.location.origin}/reset-password`
-            : undefined;
+        // Build an environment-aware redirect URL for the password-reset link.
+        // Priority:
+        //   1. NEXT_PUBLIC_SITE_URL (explicit per-environment setting) — this is
+        //      the canonical, source-of-truth origin. It guarantees the email
+        //      link points at the correct site even when the browser origin is
+        //      a preview/staging domain or localhost.
+        //   2. window.location.origin  (fallback for local dev)
+        //
+        // The reset route is /reset-password and MUST be listed in Supabase's
+        // allowed redirect URLs (Dashboard > Auth > URL Configuration).
+        const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
+        const origin =
+          configuredSiteUrl?.replace(/\/+$/, "") ||
+          (typeof window !== "undefined" ? window.location.origin : "");
+
+        const redirectTo = origin ? `${origin}/reset-password` : undefined;
 
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo

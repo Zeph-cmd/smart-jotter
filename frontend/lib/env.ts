@@ -1,3 +1,32 @@
+/**
+ * The public site URL for the current environment.
+ *
+ * Priority:
+ *   1. NEXT_PUBLIC_SITE_URL  (explicit per-environment setting)
+ *   2. VERCEL_URL            (auto-set by Vercel, e.g. smart-jotter.vercel.app)
+ *   3. "http://localhost:3000" (local dev fallback)
+ *
+ * This is used for Supabase redirect URLs (password reset, email confirm) and
+ * any other place we need to know our own origin. Never hardcode localhost in
+ * these flows — that breaks the link in production.
+ *
+ * No trailing slash.
+ */
+export function getPublicSiteUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+  if (explicit) {
+    return explicit.replace(/\/+$/, "");
+  }
+
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) {
+    // VERCEL_URL is scheme-less ("smart-jotter.vercel.app").
+    return `https://${vercelUrl.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`;
+  }
+
+  return "http://localhost:3000";
+}
+
 export function getSupabaseUrl() {
   const value = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
 

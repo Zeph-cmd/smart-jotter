@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from "@/lib/env";
+import {
+  checkRateLimit,
+  getClientIp,
+  RATE_LIMITS
+} from "@/lib/server/rate-limit";
+
+// RFC 5322 simplified email pattern — good enough for input validation before
+// handing off to Supabase. Supabase does its own validation too.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PASSWORD_LENGTH = 128;
 
 // ============================================================================
 // Smart Jotter — Server-side signup with auto-confirm
@@ -25,6 +36,20 @@ type SignupRequestBody = {
 };
 
 export async function POST(request: Request) {
+  // Rate limit per IP to prevent brute-force account creation / abuse.
+  const ip = getClientIp(request);
+  const { ok, retryAfter } = checkRateLimit(
+    `signup:${ip}`,
+    RATE_LIMITS.signup.limit,
+    RATE_LIMITS.signup.windowMs
+  );
+  if (!ok) {
+    return NextResponse.json(
+      { error: "Too many signup attempts. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
+  }
+
   let body: SignupRequestBody;
 
   try {
@@ -46,9 +71,23 @@ export async function POST(request: Request) {
     );
   }
 
+  if (email.length > MAX_EMAIL_LENGTH || !EMAIL_RE.test(email)) {
+    return NextResponse.json(
+      { error: "Please enter a valid email address." },
+      { status: 400 }
+    );
+  }
+
   if (password.length < 6) {
     return NextResponse.json(
       { error: "Password must be at least 6 characters." },
+      { status: 400 }
+    );
+  }
+
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    return NextResponse.json(
+      { error: "Password must be 128 characters or fewer." },
       { status: 400 }
     );
   }

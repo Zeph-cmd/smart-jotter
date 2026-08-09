@@ -11,6 +11,10 @@ import {
   markTransactionProcessed,
   verifyPaystackTransaction
 } from "@/lib/paystack/server";
+import {
+  checkRateLimit,
+  RATE_LIMITS
+} from "@/lib/server/rate-limit";
 
 /**
  * POST /api/paystack/verify
@@ -29,6 +33,19 @@ export async function POST(request: Request) {
   try {
     const { supabase, user } = await requireAuthenticatedClient();
     const userId = requireUserId(user);
+
+    // Rate limit per user to prevent abuse of the verify endpoint.
+    const { ok, retryAfter } = checkRateLimit(
+      `paystack-verify:${userId}`,
+      RATE_LIMITS.paymentVerify.limit,
+      RATE_LIMITS.paymentVerify.windowMs
+    );
+    if (!ok) {
+      return NextResponse.json(
+        { error: "Too many verification attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
+    }
 
     // Parse + validate the request body.
     const body = (await request.json().catch(() => null)) as

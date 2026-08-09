@@ -5,15 +5,21 @@ import { handleRouteError } from "@/lib/server/route";
 import { enforceCredits, recordAiUsage } from "@/lib/ai/credits";
 import { suggestionActionToFeature } from "@/lib/credits";
 import type { SuggestionAction } from "@/types/note";
+import {
+  checkRateLimit,
+  RATE_LIMITS
+} from "@/lib/server/rate-limit";
+
+const MAX_CONTENT_LENGTH = 20000;
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as {
+  const body = (await request.json().catch(() => null)) as {
     action?: SuggestionAction;
     content?: string;
-  };
+  } | null;
 
-  const action = body.action;
-  const content = body.content?.trim() ?? "";
+  const action = body?.action;
+  const content = body?.content?.trim() ?? "";
 
   if (!action || !["simplify", "explain", "improve"].includes(action)) {
     return NextResponse.json(
@@ -29,9 +35,29 @@ export async function POST(request: Request) {
     );
   }
 
+  if (content.length > MAX_CONTENT_LENGTH) {
+    return NextResponse.json(
+      { error: "Content is too long. Please shorten your note." },
+      { status: 400 }
+    );
+  }
+
   try {
     const { supabase, user } = await requireAuthenticatedClient();
     const userId = requireUserId(user);
+
+    // Rate limit per user.
+    const { ok, retryAfter } = checkRateLimit(
+      `suggest:${userId}`,
+      RATE_LIMITS.ai.limit,
+      RATE_LIMITS.ai.windowMs
+    );
+    if (!ok) {
+      return NextResponse.json(
+        { error: "Too many requests. Please slow down." },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
+    }
 
     const feature = suggestionActionToFeature(action);
     const cost = feature
