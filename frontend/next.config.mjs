@@ -10,7 +10,8 @@
  *  - Referrer-Policy: limits referrer leakage to same-origin only.
  *  - Permissions-Policy: disables sensitive browser APIs we don't use.
  *  - Content-Security-Policy: restricts resource origins. Paystack's inline
- *    JS popup is loaded from js.paystack.co and calls back into our origin.
+ *    JS popup is loaded from js.paystack.co, styles from paystack.com, opens
+ *    a checkout iframe at checkout.paystack.com, and calls api.paystack.co.
  */
 const securityHeaders = [
   {
@@ -38,12 +39,14 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // Allow Paystack's inline popup + iframe checkout.
+      // Allow Paystack's inline popup + iframe checkout. Only the exact
+      // origins Paystack needs are whitelisted; everything else stays locked
+      // down to 'self' so unrelated third-party scripts/styles are blocked.
       "script-src 'self' 'unsafe-inline' https://js.paystack.co",
-      "frame-src 'self' https://js.paystack.co https://api.paystack.co",
+      "frame-src 'self' https://js.paystack.co https://checkout.paystack.com",
       "connect-src 'self' https://api.paystack.co https://*.supabase.co",
       "img-src 'self' data: https:",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://paystack.com",
       "font-src 'self' data:",
       "object-src 'none'",
       "base-uri 'self'"
