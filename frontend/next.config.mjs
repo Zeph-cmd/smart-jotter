@@ -9,10 +9,15 @@
  *  - X-Frame-Options: clickjacking / iframe embedding defense.
  *  - Referrer-Policy: limits referrer leakage to same-origin only.
  *  - Permissions-Policy: disables sensitive browser APIs we don't use.
- *  - Content-Security-Policy: restricts resource origins. Paystack's inline
- *    JS popup is loaded from js.paystack.co, styles from paystack.com, opens
- *    a checkout iframe at checkout.paystack.com, and calls api.paystack.co.
- */
+  *  - Content-Security-Policy: restricts resource origins. Paystack's inline
+  *    JS popup is loaded from js.paystack.co, styles from paystack.com, opens
+  *    a checkout iframe at checkout.paystack.com, and calls api.paystack.co.
+  *    `blob:` is included in script-src because the framework's runtime
+  *    (Next.js worker runtime) and Paystack's inline.js spawn helper scripts
+  *    from blob: URLs at runtime. blob: sources are created by the same
+  *    origin via URL.createObjectURL, so this does NOT open any third-party
+  *    host — it only permits scripts the page itself generates.
+  */
 const securityHeaders = [
   {
     key: "Strict-Transport-Security",
@@ -42,7 +47,7 @@ const securityHeaders = [
       // Allow Paystack's inline popup + iframe checkout. Only the exact
       // origins Paystack needs are whitelisted; everything else stays locked
       // down to 'self' so unrelated third-party scripts/styles are blocked.
-      "script-src 'self' 'unsafe-inline' https://js.paystack.co",
+      "script-src 'self' 'unsafe-inline' blob: https://js.paystack.co",
       "frame-src 'self' https://js.paystack.co https://checkout.paystack.com",
       "connect-src 'self' https://api.paystack.co https://*.supabase.co",
       "img-src 'self' data: https:",

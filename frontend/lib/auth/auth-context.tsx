@@ -8,6 +8,8 @@ import {
   useState,
   type ReactNode
 } from "react";
+// (useRef not currently needed; bootstrap runs once because the `supabase`
+// dependency is a stable singleton.)
 import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { getTermsAgreement, setTermsAgreed } from "@/lib/auth/agreement";
@@ -61,32 +63,88 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     let isMounted = true;
 
-    const loadSession = async () => {
-      const {
-        data: { session: currentSession }
-      } = await supabase.auth.getSession();
-
-      if (!isMounted) {
-        return;
-      }
-
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+    // Hard safety net: no matter what happens (network hung, a refresh loop we
+    // didn't anticipate, an unhandled rejection), never leave the app stuck on
+    // the loading skeleton forever. After this many ms we force loading off so
+    // the user at least sees the login screen and can retry.
+    const LOADING_TIMEOUT_MS = 12_000;
+    const loadingTimer = window.setTimeout(() => {
       setIsLoading(false);
+    }, LOADING_TIMEOUT_MS);
+
+    const loadSession = async () => {
+      try {
+        const {
+          data: { session: currentSession }
+        } = await supabase.auth.getSession();
+
+        if (!isMounted) {
+          return;
+        }
+
+        // If we appear to have a session, validate it exactly once against the
+        // server (the Supabase-recommended pattern — don't trust the stored
+        // session). getUser() is also what triggers a token refresh when the
+        // access token has expired, so this is the *single* place we allow a
+        // refresh attempt. If it fails (invalid/expired refresh token, or a
+        // 429 rate limit), we sign out locally to clear the bad credentials
+        // and fall back to the login screen. This prevents autoRefreshToken
+        // from retrying forever on a dead refresh token (the 429 storm).
+        if (currentSession) {
+          const { error } = await supabase.auth.getUser();
+
+          if (error) {
+            // scope: "local" avoids an extra (failing) server revocation call
+            // — the token is already bad. It clears the cookies/storage so
+            // autoRefreshToken stops retrying.
+            await supabase.auth.signOut({ scope: "local" });
+
+            if (!isMounted) {
+              return;
+            }
+
+            setSession(null);
+            setUser(null);
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        setIsLoading(false);
+      } catch {
+        // Unexpected failure (network drop, client misconfiguration). Fail
+        // safe to the logged-out state so the app is never stuck loading.
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+          setIsLoading(false);
+        }
+      }
     };
 
     void loadSession();
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      // When the session disappears (explicit sign-out, or Supabase giving up
+      // on refreshing), clear the user so the UI returns to the login screen
+      // rather than holding a stale session.
+      if (event === "SIGNED_OUT" || nextSession === null) {
+        setSession(null);
+        setUser(null);
+      } else {
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+      }
       setIsLoading(false);
     });
 
     return () => {
       isMounted = false;
+      window.clearTimeout(loadingTimer);
       subscription.unsubscribe();
     };
   }, [supabase]);
@@ -102,6 +160,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     let isMounted = true;
     setIsAgreementLoading(true);
+
+    // Safety net: never leave a signed-in user on the agreement loading
+    // skeleton forever, even if the DB read hangs (e.g. network drop). After
+    // this many ms, fall back to "not agreed" so the agreement screen renders
+    // and the user can retry instead of staring at a skeleton.
+    const AGREEMENT_TIMEOUT_MS = 12_000;
+    const agreementTimer = window.setTimeout(() => {
+      if (isMounted) {
+        setHasAgreedToTerms(false);
+        setIsAgreementLoading(false);
+      }
+    }, AGREEMENT_TIMEOUT_MS);
 
     const loadAgreement = async () => {
       try {
@@ -126,6 +196,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     return () => {
       isMounted = false;
+      window.clearTimeout(agreementTimer);
     };
   }, [supabase, user]);
 
