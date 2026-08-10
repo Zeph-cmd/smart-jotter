@@ -34,8 +34,22 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Module-level guard so the visibilitychange refresh handler never overlaps
-// with the bootstrap refresh or with itself (e.g. rapid tab switches).
+// Module-level guards that enforce "refresh at most ONCE per page load".
+//
+// Why module-level (not useRef/useState): React state/refs reset on every
+// remount, but a dead refresh token can survive across remounts in
+// localStorage. A module-level flag survives remounts within the same page
+// lifecycle, guaranteeing we never ask Supabase to refresh more than once —
+// no matter how many times AuthProvider re-mounts (StrictMode, layout shifts,
+// route transitions that preserve the provider, error-boundary recovery).
+// This is the single most important defence against the
+// /auth/v1/token?grant_type=refresh 429 rate-limit storm.
+let bootstrapStarted = false;
+// True once we have attempted (or are attempting) a refresh this page load.
+// Set on every refresh path and never cleared except when a brand-new sign-in
+// gives us a fresh, valid session.
+let refreshAttempted = false;
+// Prevents overlapping refreshes between bootstrap and the visibility handler.
 let isRefreshing = false;
 
 type AuthProviderProps = {
@@ -76,92 +90,148 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(false);
     }, LOADING_TIMEOUT_MS);
 
-    const loadSession = async () => {
-      try {
-        const {
-          data: { session: currentSession }
-        } = await supabase.auth.getSession();
-
-        if (!isMounted) {
-          return;
+    // "Once per session load" guard: if AuthProvider re-mounts (StrictMode,
+    // layout shifts, route transitions that preserve the provider, error
+    // boundary recovery) we must NOT re-run the bootstrap that can call
+    // refreshSession(). A remount with a dead token in storage is exactly the
+    // scenario that produced the /auth/v1/token 429 storm. The module-level
+    // flag survives remounts within one page lifecycle, so this block — the
+    // ONLY place a refresh can happen during bootstrap — runs at most once.
+    if (bootstrapStarted) {
+      // Still surface whatever session storage holds so the UI is correct,
+      // but never re-attempt a refresh.
+      void (async () => {
+        try {
+          const {
+            data: { session: cached }
+          } = await supabase.auth.getSession();
+          if (!isMounted) return;
+          setSession(cached);
+          setUser(cached?.user ?? null);
+        } catch {
+          /* ignore — leave current state */
+        } finally {
+          if (isMounted) setIsLoading(false);
         }
+      })();
+    } else {
+      bootstrapStarted = true;
 
-        // autoRefreshToken is DISABLED on the browser client (see
-        // lib/supabase/browser.ts) to prevent the background timer from
-        // hammering /oauth/token on a dead refresh token. This block is the
-        // SINGLE place we allow a refresh during bootstrap — exactly one
-        // attempt, and on any failure we clear local state and fall back to
-        // the login screen. There is no retry path here, so no 429 storm.
-        if (currentSession) {
-          // Refresh iff the access token is already expired or about to
-          // expire (< 60s). If the token is still good, just verify the user
-          // still exists server-side. Either branch fails closed.
-          const expiresAt = currentSession.expires_at ?? 0;
-          const nowSec = Math.floor(Date.now() / 1000);
-          const shouldRefresh = expiresAt - nowSec < 60;
+      const loadSession = async () => {
+        // Single-writer guard so the visibility handler can't overlap with
+        // bootstrap and double-fire the refresh endpoint.
+        isRefreshing = true;
+        try {
+          const {
+            data: { session: currentSession }
+          } = await supabase.auth.getSession();
 
-          let failed = false;
-
-          if (shouldRefresh) {
-            const { error: refreshError } = await supabase.auth.refreshSession();
-            failed = Boolean(refreshError);
-          } else {
-            const { error: userError } = await supabase.auth.getUser();
-            failed = Boolean(userError);
+          if (!isMounted) {
+            return;
           }
 
-          if (failed) {
-            // scope: "local" avoids an extra (failing) server revocation call
-            // — the token is already bad. It clears cookies/storage so the
-            // client holds no dead credentials.
-            try {
-              await supabase.auth.signOut({ scope: "local" });
-            } catch {
-              /* already cleared as best-effort */
+          // autoRefreshToken is DISABLED on the browser client (see
+          // lib/supabase/browser.ts) to prevent the background timer from
+          // hammering /oauth/token on a dead refresh token. This block is the
+          // SINGLE place we allow a refresh during bootstrap — exactly one
+          // attempt, and on any failure we clear local state and fall back to
+          // the login screen. There is no retry path here, so no 429 storm.
+          if (currentSession) {
+            // Refresh iff the access token is already expired or about to
+            // expire (< 60s). If the token is still good, just verify the user
+            // still exists server-side. Either branch fails closed.
+            const expiresAt = currentSession.expires_at ?? 0;
+            const nowSec = Math.floor(Date.now() / 1000);
+            const shouldRefresh = expiresAt - nowSec < 60;
+
+            let failed = false;
+
+            if (shouldRefresh) {
+              // Hard guarantee: across bootstrap + visibility handler + any
+              // remount, we ask Supabase to refresh AT MOST ONCE per page
+              // load. Without this, two concurrent paths (or a remount racing
+              // the visibility handler) can each fire refreshSession() against
+              // the same dead token and pile up requests.
+              if (refreshAttempted) {
+                failed = true;
+              } else {
+                refreshAttempted = true;
+                const { error: refreshError } = await supabase.auth.refreshSession();
+                failed = Boolean(refreshError);
+              }
+            } else {
+              const { error: userError } = await supabase.auth.getUser();
+              failed = Boolean(userError);
             }
 
-            if (!isMounted) {
+            if (failed) {
+              // scope: "local" avoids an extra (failing) server revocation call
+              // — the token is already bad. It clears cookies/storage so the
+              // client holds no dead credentials, which also stops the
+              // visibility handler and any remount from retrying on the same
+              // dead token.
+              try {
+                await supabase.auth.signOut({ scope: "local" });
+              } catch {
+                /* already cleared as best-effort */
+              }
+
+              if (!isMounted) {
+                return;
+              }
+
+              setSession(null);
+              setUser(null);
+              setIsLoading(false);
               return;
             }
+          }
 
+          // Re-read so we pick up the refreshed session if one happened.
+          const {
+            data: { session: resolvedSession }
+          } = await supabase.auth.getSession();
+
+          if (!isMounted) {
+            return;
+          }
+
+          setSession(resolvedSession);
+          setUser(resolvedSession?.user ?? null);
+          setIsLoading(false);
+        } catch {
+          // Unexpected failure (network drop, client misconfiguration). Fail
+          // safe: clear any dead session so subsequent mounts/visibility
+          // events don't retry on it. Never leave the app stuck loading.
+          try {
+            await supabase.auth.signOut({ scope: "local" });
+          } catch {
+            /* ignore */
+          }
+          if (isMounted) {
             setSession(null);
             setUser(null);
             setIsLoading(false);
-            return;
           }
+        } finally {
+          isRefreshing = false;
         }
+      };
 
-        // Re-read so we pick up the refreshed session if one happened.
-        const {
-          data: { session: resolvedSession }
-        } = await supabase.auth.getSession();
-
-        if (!isMounted) {
-          return;
-        }
-
-        setSession(resolvedSession);
-        setUser(resolvedSession?.user ?? null);
-        setIsLoading(false);
-      } catch {
-        // Unexpected failure (network drop, client misconfiguration). Fail
-        // safe to the logged-out state so the app is never stuck loading.
-        if (isMounted) {
-          setSession(null);
-          setUser(null);
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void loadSession();
+      void loadSession();
+    }
 
     // Because autoRefreshToken is off, refresh the session once when the user
     // returns to the tab IF the token is near expiry. This keeps long-lived
     // tabs working without re-introducing a background retry loop. The
-    // module-level `isRefreshing` guard prevents overlapping refreshes.
+    // module-level `isRefreshing` AND `refreshAttempted` guards prevent both
+    // overlapping refreshes and a retry storm on a dead token.
     const onVisibilityChange = () => {
-      if (document.visibilityState !== "visible" || isRefreshing) {
+      if (
+        document.visibilityState !== "visible" ||
+        isRefreshing ||
+        refreshAttempted
+      ) {
         return;
       }
 
@@ -178,6 +248,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             return;
           }
 
+          // Claim the single refresh slot for this page load. If bootstrap
+          // already tried (and failed), we don't try again here — the token
+          // is almost certainly dead and another request would feed the 429.
+          refreshAttempted = true;
           isRefreshing = true;
           const { error } = await supabase.auth.refreshSession();
           if (error && isMounted) {
@@ -202,6 +276,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      // A brand-new sign-in (user just typed their password, or completed
+      // sign-up) produces a fresh, valid refresh token. Reset the
+      // refresh-attempt guard so the visibility handler can keep this new
+      // session alive later — otherwise the "once per page load" limit from
+      // a *previous* dead token would permanently block all future refreshes.
+      if (event === "SIGNED_IN" && nextSession) {
+        refreshAttempted = false;
+      }
+
       // When the session disappears (explicit sign-out, or Supabase giving up
       // on refreshing), clear the user so the UI returns to the login screen
       // rather than holding a stale session.
