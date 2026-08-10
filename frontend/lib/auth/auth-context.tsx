@@ -10,9 +10,16 @@ import {
 } from "react";
 import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { getTermsAgreement, setTermsAgreed } from "@/lib/auth/agreement";
 
 type AuthContextValue = {
   isLoading: boolean;
+  /** True until we've finished loading the terms-agreement state for a signed-in user. */
+  isAgreementLoading: boolean;
+  /** Whether the signed-in user has accepted the terms. null while loading / logged out. */
+  hasAgreedToTerms: boolean | null;
+  /** Records terms acceptance and flips hasAgreedToTerms to true. */
+  acceptTerms: () => Promise<void>;
   resendConfirmation: (email: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   session: Session | null;
@@ -34,6 +41,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Terms-agreement state. null = unknown/loading, boolean = resolved status.
+  const [hasAgreedToTerms, setHasAgreedToTerms] = useState<boolean | null>(null);
+  const [isAgreementLoading, setIsAgreementLoading] = useState(false);
 
   useEffect(() => {
     try {
@@ -80,11 +91,59 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [supabase]);
 
+  // Load the terms-agreement state whenever the signed-in user changes.
+  // Reset to null on logout / loading so the gate treats it as "unknown".
+  useEffect(() => {
+    if (!supabase || !user) {
+      setHasAgreedToTerms(null);
+      setIsAgreementLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsAgreementLoading(true);
+
+    const loadAgreement = async () => {
+      try {
+        const status = await getTermsAgreement(supabase, user.id);
+        if (isMounted) {
+          setHasAgreedToTerms(status.agreed);
+        }
+      } catch {
+        if (isMounted) {
+          // Fail closed: treat unknown errors as not-yet-agreed so the user
+          // can still see the agreement screen and retry.
+          setHasAgreedToTerms(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsAgreementLoading(false);
+        }
+      }
+    };
+
+    void loadAgreement();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [supabase, user]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       isLoading,
+      isAgreementLoading,
+      hasAgreedToTerms,
       session,
       user,
+      async acceptTerms() {
+        if (!supabase || !user) {
+          throw new Error("Authentication is not configured yet.");
+        }
+
+        await setTermsAgreed(supabase, user.id);
+        setHasAgreedToTerms(true);
+      },
       async signIn(email, password) {
         if (!supabase) {
           throw new Error("Authentication is not configured yet.");
@@ -213,7 +272,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       }
     }),
-    [isLoading, session, supabase, user]
+    [hasAgreedToTerms, isAgreementLoading, isLoading, session, supabase, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

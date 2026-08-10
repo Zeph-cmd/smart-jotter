@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { buildQuizForNote } from "@/lib/learning/flashcards";
 
@@ -16,7 +20,9 @@ export async function GET(request: Request) {
 
   try {
     const { supabase, user } = await requireAuthenticatedClient();
-    const quiz = await buildQuizForNote(supabase, requireUserId(user), noteId);
+    const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
+    const quiz = await buildQuizForNote(supabase, userId, noteId);
     return NextResponse.json({
       note_title: quiz.noteTitle,
       questions: quiz.questions

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { getAiCredits, getUsageByFeature } from "@/lib/ai/credits";
 import { FEATURE_CREDIT_COSTS, FEATURE_LABELS, type AiFeature } from "@/lib/credits";
@@ -15,6 +19,7 @@ export async function GET() {
   try {
     const { supabase, user } = await requireAuthenticatedClient();
     const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
 
     const [credits, usageByFeature] = await Promise.all([
       getAiCredits(supabase, userId),

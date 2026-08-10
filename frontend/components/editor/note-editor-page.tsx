@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AgreementScreen } from "@/components/auth/agreement-screen";
 import { AuthPanel } from "@/components/auth/auth-panel";
 import { NoteEditor } from "@/components/editor/note-editor";
 import { RelatedNotes } from "@/components/editor/related-notes";
@@ -36,7 +37,12 @@ type DraftPayload = {
 };
 
 export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
-  const { isLoading: isAuthLoading, user } = useAuth();
+  const {
+    isLoading: isAuthLoading,
+    isAgreementLoading,
+    hasAgreedToTerms,
+    user
+  } = useAuth();
   const [note, setNote] = useState<Note | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -135,7 +141,12 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
   );
 
   useEffect(() => {
-    if (isAuthLoading || !user) {
+    if (
+      isAuthLoading ||
+      !user ||
+      isAgreementLoading ||
+      !hasAgreedToTerms
+    ) {
       return;
     }
 
@@ -183,7 +194,14 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
     };
 
     void loadPage();
-  }, [draftKey, isAuthLoading, noteId, user]);
+  }, [
+    draftKey,
+    hasAgreedToTerms,
+    isAgreementLoading,
+    isAuthLoading,
+    noteId,
+    user
+  ]);
 
   useEffect(() => {
     if (!hasLoadedNote) {
@@ -288,6 +306,27 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
       <main className="min-h-screen px-4 py-10 sm:px-6">
         <div className="mx-auto max-w-5xl">
           <AuthPanel />
+        </div>
+      </main>
+    );
+  }
+
+  // Terms-agreement gate: signed-in users must accept before accessing notes.
+  if (isAgreementLoading || hasAgreedToTerms === null) {
+    return (
+      <main className="min-h-screen px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-6xl rounded-[32px] border border-line bg-white p-8 shadow-jotter dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading your workspace...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!hasAgreedToTerms) {
+    return (
+      <main className="min-h-screen px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-5xl">
+          <AgreementScreen />
         </div>
       </main>
     );

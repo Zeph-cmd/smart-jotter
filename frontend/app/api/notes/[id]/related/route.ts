@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { getRelatedNotes } from "@/lib/graph/related-notes";
 
@@ -14,7 +18,9 @@ export async function GET(_request: Request, context: RouteContext) {
 
   try {
     const { supabase, user } = await requireAuthenticatedClient();
-    const notes = await getRelatedNotes(supabase, requireUserId(user), id);
+    const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
+    const notes = await getRelatedNotes(supabase, userId, id);
     return NextResponse.json({ notes });
   } catch (error) {
     return handleRouteError(

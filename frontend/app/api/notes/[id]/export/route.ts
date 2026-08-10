@@ -1,6 +1,10 @@
 import { getNoteById } from "@/lib/notes-service";
 import { createNoteExport, parseExportFormat } from "@/lib/export/note-export";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 
 type RouteContext = {
@@ -23,7 +27,9 @@ export async function GET(request: Request, context: RouteContext) {
 
   try {
     const { supabase, user } = await requireAuthenticatedClient();
-    const note = await getNoteById(supabase, requireUserId(user), id);
+    const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
+    const note = await getNoteById(supabase, userId, id);
 
     if (!note) {
       return Response.json({ error: "Note not found." }, { status: 404 });

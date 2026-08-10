@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { semanticSearch } from "@/lib/search/semantic-search";
 import { enforceCredits, recordAiUsage } from "@/lib/ai/credits";
@@ -31,6 +35,7 @@ export async function GET(request: Request) {
   try {
     const { supabase, user } = await requireAuthenticatedClient();
     const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
 
     // Rate limit per user.
     const { ok, retryAfter } = checkRateLimit(

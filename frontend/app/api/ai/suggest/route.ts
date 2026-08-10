@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { generateSuggestion } from "@/lib/ai/suggestions";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { enforceCredits, recordAiUsage } from "@/lib/ai/credits";
 import { suggestionActionToFeature } from "@/lib/credits";
@@ -45,6 +49,7 @@ export async function POST(request: Request) {
   try {
     const { supabase, user } = await requireAuthenticatedClient();
     const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
 
     // Rate limit per user.
     const { ok, retryAfter } = checkRateLimit(

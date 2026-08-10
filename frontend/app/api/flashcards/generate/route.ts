@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { generateFlashcardsForNote } from "@/lib/learning/flashcards";
 
@@ -18,9 +22,11 @@ export async function POST(request: Request) {
 
   try {
     const { supabase, user } = await requireAuthenticatedClient();
+    const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
     const flashcards = await generateFlashcardsForNote(
       supabase,
-      requireUserId(user),
+      userId,
       noteId
     );
     return NextResponse.json({ flashcards });

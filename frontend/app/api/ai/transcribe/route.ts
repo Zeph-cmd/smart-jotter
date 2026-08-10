@@ -5,7 +5,11 @@ import {
   recordAudioUsage,
   MAX_RECORDING_SECONDS
 } from "@/lib/ai/entitlements";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import {
   checkRateLimit,
@@ -37,6 +41,7 @@ export async function POST(request: Request) {
   try {
     const { supabase, user } = await requireAuthenticatedClient();
     const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
 
     // Rate limit per user — transcription is expensive (Deepgram).
     const { ok, retryAfter } = checkRateLimit(

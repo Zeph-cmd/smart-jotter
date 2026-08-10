@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { createNote, getNotes } from "@/lib/notes-service";
 
 export async function GET() {
   try {
     const { supabase, user } = await requireAuthenticatedClient();
-    const notes = await getNotes(supabase, requireUserId(user));
+    const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
+    const notes = await getNotes(supabase, userId);
     return NextResponse.json({ notes });
   } catch (error) {
     return handleRouteError("api-notes-get", error, "Could not load your notes.");
@@ -27,7 +33,9 @@ export async function POST(request: Request) {
 
   try {
     const { supabase, user } = await requireAuthenticatedClient();
-    const note = await createNote(supabase, requireUserId(user), { title, content });
+    const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
+    const note = await createNote(supabase, userId, { title, content });
     return NextResponse.json({ note }, { status: 201 });
   } catch (error) {
     return handleRouteError("api-notes-post", error, "Could not create your note.");

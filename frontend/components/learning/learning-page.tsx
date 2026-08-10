@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AgreementScreen } from "@/components/auth/agreement-screen";
 import { AuthPanel } from "@/components/auth/auth-panel";
 import { FlashcardReview } from "@/components/learning/flashcard-review";
 import { QuizMode } from "@/components/learning/quiz-mode";
@@ -21,7 +22,12 @@ type LearningPageProps = {
 };
 
 export function LearningPage({ noteId }: LearningPageProps) {
-  const { isLoading: isAuthLoading, user } = useAuth();
+  const {
+    isLoading: isAuthLoading,
+    isAgreementLoading,
+    hasAgreedToTerms,
+    user
+  } = useAuth();
   const [note, setNote] = useState<Note | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
@@ -38,7 +44,12 @@ export function LearningPage({ noteId }: LearningPageProps) {
   const [dueCount, setDueCount] = useState(0);
 
   useEffect(() => {
-    if (isAuthLoading || !user) {
+    if (
+      isAuthLoading ||
+      !user ||
+      isAgreementLoading ||
+      !hasAgreedToTerms
+    ) {
       return;
     }
 
@@ -68,7 +79,13 @@ export function LearningPage({ noteId }: LearningPageProps) {
     };
 
     void loadLearningMode();
-  }, [isAuthLoading, noteId, user]);
+  }, [
+    hasAgreedToTerms,
+    isAgreementLoading,
+    isAuthLoading,
+    noteId,
+    user
+  ]);
 
   const currentFlashcard = flashcards[currentCardIndex] ?? null;
   const dueForThisNote = useMemo(
@@ -169,6 +186,27 @@ export function LearningPage({ noteId }: LearningPageProps) {
       <main className="min-h-screen px-4 py-10 sm:px-6">
         <div className="mx-auto max-w-5xl">
           <AuthPanel />
+        </div>
+      </main>
+    );
+  }
+
+  // Terms-agreement gate: signed-in users must accept before Learning Mode.
+  if (isAgreementLoading || hasAgreedToTerms === null) {
+    return (
+      <main className="min-h-screen px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-6xl rounded-[32px] border border-line bg-white p-8 shadow-jotter dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading your workspace...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!hasAgreedToTerms) {
+    return (
+      <main className="min-h-screen px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-5xl">
+          <AgreementScreen />
         </div>
       </main>
     );

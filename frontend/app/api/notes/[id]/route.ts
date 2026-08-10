@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { getNoteById, updateNote } from "@/lib/notes-service";
 
@@ -24,7 +28,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   try {
     const { supabase, user } = await requireAuthenticatedClient();
-    const note = await updateNote(supabase, requireUserId(user), id, { title, content });
+    const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
+    const note = await updateNote(supabase, userId, id, { title, content });
     return NextResponse.json({ note });
   } catch (error) {
     return handleRouteError("api-note-patch", error, "Could not save your note.", {
@@ -38,7 +44,9 @@ export async function GET(_request: Request, context: RouteContext) {
 
   try {
     const { supabase, user } = await requireAuthenticatedClient();
-    const note = await getNoteById(supabase, requireUserId(user), id);
+    const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
+    const note = await getNoteById(supabase, userId, id);
 
     if (!note) {
       return NextResponse.json(

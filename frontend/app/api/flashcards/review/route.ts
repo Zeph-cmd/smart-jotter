@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedClient, requireUserId } from "@/lib/server/auth";
+import {
+  requireAuthenticatedClient,
+  requireTermsAccepted,
+  requireUserId
+} from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { reviewFlashcard } from "@/lib/learning/flashcards";
 import type { ReviewPerformance } from "@/types/note";
@@ -28,7 +32,9 @@ export async function POST(request: Request) {
 
   try {
     const { supabase, user } = await requireAuthenticatedClient();
-    const flashcard = await reviewFlashcard(supabase, requireUserId(user), {
+    const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
+    const flashcard = await reviewFlashcard(supabase, userId, {
       flashcardId,
       performance
     });

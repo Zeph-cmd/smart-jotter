@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { AgreementScreen } from "@/components/auth/agreement-screen";
 import { AuthStatus } from "@/components/auth/auth-status";
 import { useAuth } from "@/lib/auth/auth-context";
 
@@ -29,13 +30,17 @@ type UsageSummary = {
  * disabled behind FEATURES_ENABLED.
  */
 export default function UsagePage() {
-  const { user } = useAuth();
+  const {
+    isAgreementLoading,
+    hasAgreedToTerms,
+    user
+  } = useAuth();
   const [summary, setSummary] = useState<UsageSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || isAgreementLoading || !hasAgreedToTerms) {
       setIsLoading(false);
       return;
     }
@@ -72,7 +77,21 @@ export default function UsagePage() {
     return () => {
       isCancelled = true;
     };
-  }, [user]);
+  }, [hasAgreedToTerms, isAgreementLoading, user]);
+
+  // Terms-agreement gate: signed-in users must accept before viewing usage.
+  if (
+    user &&
+    (isAgreementLoading || hasAgreedToTerms === null || !hasAgreedToTerms)
+  ) {
+    return (
+      <main className="min-h-screen px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-5xl">
+          <AgreementScreen />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen px-4 py-10 sm:px-6">
