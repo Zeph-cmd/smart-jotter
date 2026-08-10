@@ -49,7 +49,24 @@ export async function requireTermsAccepted(
     .eq("user_id", userId)
     .maybeSingle();
 
+  // If the query fails because the schema is not applied yet (migration not
+  // run), we cannot verify the agreement. Fail safe by blocking the request
+  // — the client-side gate handles prompting. Other unexpected errors also
+  // fail safe with a 403 so nothing is exposed without agreement.
   if (error) {
+    // PostgREST returns PGRST205 / code "42P01" when the column is missing.
+    const schemaMissing =
+      error.code === "PGRST205" ||
+      error.code === "42P01" ||
+      (error.message ?? "").toLowerCase().includes("does not exist");
+
+    if (schemaMissing) {
+      throw new ApiError(
+        "Please accept the terms of use before continuing.",
+        403
+      );
+    }
+
     throw new ApiError("Could not verify terms agreement.", 500);
   }
 

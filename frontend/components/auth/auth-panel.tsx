@@ -11,6 +11,7 @@ export function AuthPanel() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,16 +98,26 @@ export function AuthPanel() {
           <label className="text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="auth-password">
             Password
           </label>
-          <input
-            id="auth-password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-sm text-ink outline-none transition focus:border-accent focus:bg-white dark:bg-slate-950 dark:text-slate-100 dark:focus:bg-slate-900"
-            placeholder="At least 6 characters"
-            minLength={6}
-            required
-          />
+          <div className="relative">
+            <input
+              id="auth-password"
+              type={isPasswordVisible ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 pr-12 text-sm text-ink outline-none transition focus:border-accent focus:bg-white dark:bg-slate-950 dark:text-slate-100 dark:focus:bg-slate-900"
+              placeholder="At least 6 characters"
+              minLength={6}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setIsPasswordVisible((visible) => !visible)}
+              className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-slate-500 transition hover:text-ink dark:text-slate-400 dark:hover:text-slate-200"
+              aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+            >
+              {isPasswordVisible ? "Hide" : "Show"}
+            </button>
+          </div>
           {mode === "login" ? (
             <Link
               href="/forgot-password"
