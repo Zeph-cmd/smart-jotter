@@ -6,8 +6,14 @@
  * (agreed_to_terms boolean, agreed_to_terms_at timestamptz).
  *
  * This module reads that state and exposes:
- *   - hasAgreedToTerms(): client read used by the auth gate / agreement screen.
- *   - setTermsAgreed():   client call to record acceptance after "Continue".
+ *   - getTermsAgreement(): client read used by the auth gate / agreement screen.
+ *   - setTermsAgreed():   records acceptance via the server-side API route.
+ *
+ * IMPORTANT: Acceptance is written via the /api/auth/accept-terms server route
+ * (which uses the Supabase service_role key, bypassing RLS entirely) instead of
+ * a client-side RPC/upsert. The old client-side write could silently fail (RPC
+ * missing, RLS blocking the write, column not added), which caused the agreement
+ * modal to keep popping up because the DB never actually recorded agreed = true.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -20,6 +26,13 @@ export type TermsAgreementStatus = {
 type AgreementRow = {
   agreed_to_terms: boolean | null;
   agreed_to_terms_at: string | null;
+};
+
+type AcceptTermsResponse = {
+  success?: boolean;
+  agreed?: boolean;
+  agreedAt?: string | null;
+  error?: string;
 };
 
 /**
@@ -57,39 +70,30 @@ export async function getTermsAgreement(
 }
 
 /**
- * Records the user's acceptance of the terms via the accept_terms RPC.
- * The RPC is security definer so it safely creates the row if it does not exist.
+ * Records the user's acceptance of the terms via the server-side API route.
+ *
+ * The route uses the Supabase service_role key (server-side only) to bypass
+ * RLS and write agreed_to_terms = true. It then verifies the write by reading
+ * it back, returning { agreed: true } only when the DB actually shows the
+ * value. This guarantees that once a user accepts, the modal never shows again
+ * for that account on any device or browser.
+ *
+ * Throws an Error if the write could not be persisted or verified.
  */
 export async function setTermsAgreed(
-  supabase: SupabaseClient,
-  userId: string
+  _supabase: SupabaseClient,
+  _userId: string
 ): Promise<void> {
-  // Strategy: try the RPC first (preferred — security definer, creates the
-  // row if it doesn't exist). If that fails (e.g. RPC not created yet or
-  // unique constraint missing), fall back to a direct upsert.
-  const { error: rpcError } = await supabase.rpc("accept_terms", {
-    input_user_id: userId
+  const response = await fetch("/api/auth/accept-terms", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" }
   });
 
-  if (!rpcError) {
-    return;
-  }
+  const data = (await response.json()) as AcceptTermsResponse;
 
-  // Fallback: direct upsert into the entitlements table.
-  const { error: upsertError } = await supabase
-    .from("sj_user_entitlements")
-    .upsert(
-      {
-        user_id: userId,
-        agreed_to_terms: true,
-        agreed_to_terms_at: new Date().toISOString()
-      },
-      { onConflict: "user_id" }
-    );
-
-  if (upsertError) {
+  if (!response.ok || !data.success || !data.agreed) {
     throw new Error(
-      `Could not save your agreement: ${upsertError.message || rpcError.message}`
+      data.error || "Could not save your agreement. Please try again."
     );
   }
 }

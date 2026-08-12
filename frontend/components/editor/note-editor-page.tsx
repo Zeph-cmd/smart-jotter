@@ -418,6 +418,12 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
             >
               Back to notes
             </Link>
+            <Link
+              href="/features"
+              className="inline-flex rounded-full border border-line px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Features
+            </Link>
             <a
               href="#note-editor"
               className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 dark:hover:bg-blue-500"
