@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 const FOOTER_LINKS = [
+  { href: "/features", label: "Features" },
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact & Feedback" },
