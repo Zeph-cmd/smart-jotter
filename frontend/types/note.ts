@@ -36,6 +36,15 @@ export type Flashcard = {
   question: string;
 };
 
+/**
+ * A single question/answer flashcard pair generated from a note's content,
+ * rendered as a flip card in the note editor.
+ */
+export type FlashcardPair = {
+  question: string;
+  answer: string;
+};
+
 export type QuizQuestion = {
   answer: string;
   flashcard_id: string;

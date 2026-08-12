@@ -12,11 +12,18 @@ import {
   ApiRequestError,
   fetchNoteRequest,
   fetchRelatedNotesRequest,
+  requestFlashcardsPreview,
   requestSuggestion,
   updateNoteRequest
 } from "@/lib/notes-api";
+import { FlashcardPreview } from "@/components/editor/flashcard-preview";
 import { SubscriptionPrompt } from "@/components/ui/subscription-prompt";
-import type { Note, RelatedNote, SuggestionAction } from "@/types/note";
+import type {
+  FlashcardPair,
+  Note,
+  RelatedNote,
+  SuggestionAction
+} from "@/types/note";
 
 const SuggestionPanel = dynamic(
   () =>
@@ -60,6 +67,9 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
   );
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const [isSuggestionLoading, setIsSuggestionLoading] = useState(false);
+  const [flashcards, setFlashcards] = useState<FlashcardPair[]>([]);
+  const [flashcardsError, setFlashcardsError] = useState<string | null>(null);
+  const [isFlashcardsLoading, setIsFlashcardsLoading] = useState(false);
   const [hasLoadedNote, setHasLoadedNote] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
   const lastSavedRef = useRef<DraftPayload>({ title: "", content: "" });
@@ -291,6 +301,43 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
     setIsSuggestionLoading(false);
   };
 
+  const handleGenerateFlashcards = async () => {
+    if (!content.trim()) {
+      setFlashcardsError("Write something first so Smart Jotter has context.");
+      setFlashcards([]);
+      return;
+    }
+
+    setIsFlashcardsLoading(true);
+    setFlashcardsError(null);
+
+    try {
+      const pairs = await requestFlashcardsPreview(content);
+      setFlashcards(pairs);
+    } catch (caughtError) {
+      setFlashcards([]);
+      // 402 = out of credits → surface the subscription/MoMo prompt.
+      if (caughtError instanceof ApiRequestError && caughtError.status === 402) {
+        setShowSubscription(true);
+        setFlashcardsError(null);
+      } else {
+        setFlashcardsError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Could not generate flashcards."
+        );
+      }
+    } finally {
+      setIsFlashcardsLoading(false);
+    }
+  };
+
+  const handleDismissFlashcards = () => {
+    setFlashcards([]);
+    setFlashcardsError(null);
+    setIsFlashcardsLoading(false);
+  };
+
   if (isAuthLoading) {
     return (
       <main className="min-h-screen px-4 py-10 sm:px-6">
@@ -415,7 +462,19 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
               saveStatusLabel={saveStatusLabel}
               suggestionAction={suggestionAction}
               title={title}
+              onGenerateFlashcards={() => void handleGenerateFlashcards()}
+              isGeneratingFlashcards={isFlashcardsLoading}
             />
+
+            {(isFlashcardsLoading || flashcards.length > 0 || flashcardsError) ? (
+              <FlashcardPreview
+                flashcards={flashcards}
+                isLoading={isFlashcardsLoading}
+                error={flashcardsError}
+                onDismiss={handleDismissFlashcards}
+                onRegenerate={() => void handleGenerateFlashcards()}
+              />
+            ) : null}
 
             {saveError ? (
               <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">

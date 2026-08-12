@@ -10,13 +10,14 @@
  * costs are now enforced by every AI route via enforceCredits().
  */
 
-/** The five AI features that consume credits. */
+/** The AI features that consume credits. */
 export type AiFeature =
   | "simplify"
   | "improve"
   | "explain"
   | "semantic_search"
-  | "ask_notes";
+  | "ask_notes"
+  | "flashcards";
 
 /**
  * Credit cost per AI feature. Adjust these values here and every gate, log,
@@ -27,7 +28,8 @@ export const FEATURE_CREDIT_COSTS: Record<AiFeature, number> = {
   improve: 1,
   explain: 1,
   semantic_search: 1,
-  ask_notes: 2
+  ask_notes: 2,
+  flashcards: 1
 };
 
 /**
@@ -67,5 +69,6 @@ export const FEATURE_LABELS: Record<AiFeature, string> = {
   improve: "Improve",
   explain: "Explain",
   semantic_search: "Semantic Search",
-  ask_notes: "Ask Your Notes"
+  ask_notes: "Ask Your Notes",
+  flashcards: "Flashcards"
 };

@@ -15,13 +15,14 @@ type NoteEditorProps = {
   suggestionAction: SuggestionAction | null;
   title: string;
   onTitleChange: (value: string) => void;
+  onGenerateFlashcards: () => void;
+  isGeneratingFlashcards?: boolean;
 };
 
 const ACTIONS: Array<{
   action: SuggestionAction;
   label: string;
 }> = [
-  { action: "simplify", label: "Simplify" },
   { action: "explain", label: "Explain" },
   { action: "improve", label: "Improve" }
 ];
@@ -35,7 +36,9 @@ export function NoteEditor({
   saveStatusLabel,
   suggestionAction,
   title,
-  onTitleChange
+  onTitleChange,
+  onGenerateFlashcards,
+  isGeneratingFlashcards = false
 }: NoteEditorProps) {
   const [softHint, setSoftHint] = useState<string | null>(null);
 
@@ -85,6 +88,11 @@ export function NoteEditor({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <ComingSoonButton
+            label={isGeneratingFlashcards ? "Generating…" : "Flashcards"}
+            onClick={onGenerateFlashcards}
+            isActive={isGeneratingFlashcards}
+          />
           {ACTIONS.map((item) => (
             <ComingSoonButton
               key={item.action}

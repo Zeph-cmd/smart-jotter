@@ -1,5 +1,6 @@
 import type {
   Flashcard,
+  FlashcardPair,
   Note,
   QuizQuestion,
   RelatedNote,
@@ -38,6 +39,10 @@ type SuggestionResponse = ApiErrorResponse & {
 
 type FlashcardsResponse = ApiErrorResponse & {
   flashcards?: Flashcard[];
+};
+
+type FlashcardsPreviewResponse = ApiErrorResponse & {
+  flashcards?: FlashcardPair[];
 };
 
 type QuizResponse = ApiErrorResponse & {
@@ -188,6 +193,28 @@ export async function requestSuggestion(payload: {
   }
 
   return data.suggestion;
+}
+
+/**
+ * Generates question/answer flashcard pairs from note content via the AI
+ * route. Same credit/subscription handling as `requestSuggestion` — a 402
+ * surfaces as an `ApiRequestError` so the caller can open the upgrade prompt.
+ */
+export async function requestFlashcardsPreview(content: string) {
+  const data = await apiRequest<FlashcardsPreviewResponse>(
+    "/api/ai/flashcards",
+    {
+      body: { content },
+      errorMessages: {
+        default: "Could not generate flashcards right now.",
+        unauthorized: "Please sign in to generate flashcards."
+      },
+      method: "POST",
+      retries: 1
+    }
+  );
+
+  return data.flashcards ?? [];
 }
 
 export async function fetchFlashcardsRequest(noteId: string) {
