@@ -1,10 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { SuggestionAction } from "@/types/note";
 
 type SuggestionPanelProps = {
   action: SuggestionAction | null;
   error: string | null;
   isLoading: boolean;
-  onApply: () => void;
+  onApply: (editedSuggestion: string) => void;
   onDismiss: () => void;
   suggestion: string | null;
 };
@@ -23,9 +26,20 @@ export function SuggestionPanel({
   onDismiss,
   suggestion
 }: SuggestionPanelProps) {
+  const [editedSuggestion, setEditedSuggestion] = useState("");
+
+  // Sync local editable copy whenever a new suggestion arrives.
+  useEffect(() => {
+    if (suggestion) {
+      setEditedSuggestion(suggestion);
+    }
+  }, [suggestion]);
+
   if (!isLoading && !error && !suggestion) {
     return null;
   }
+
+  const isEdited = suggestion !== null && editedSuggestion !== suggestion;
 
   return (
     <section className="rounded-[28px] border border-line bg-white p-5 shadow-jotter dark:bg-slate-900">
@@ -59,21 +73,34 @@ export function SuggestionPanel({
 
       {suggestion ? (
         <>
-          <div className="mt-4 rounded-3xl border border-line bg-slate-50 px-4 py-4 dark:bg-slate-950">
-            <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700 dark:text-slate-200">
-              {suggestion}
-            </p>
+          <div className="mt-4 rounded-3xl border border-line bg-slate-50 px-4 py-3 dark:bg-slate-950">
+            <textarea
+              value={editedSuggestion}
+              onChange={(event) => setEditedSuggestion(event.target.value)}
+              rows={Math.min(14, Math.max(4, editedSuggestion.split("\n").length + 1))}
+              className="w-full resize-y rounded-2xl border border-transparent bg-transparent px-2 py-2 text-sm leading-7 text-slate-700 outline-none transition focus:border-accent dark:text-slate-200"
+              aria-label="Editable suggestion"
+            />
           </div>
-          <div className="mt-4 flex items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={onApply}
+              onClick={() => onApply(editedSuggestion)}
               className="inline-flex items-center justify-center rounded-full bg-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-blue-700 dark:hover:bg-blue-500"
             >
-              Replace note content
+              {isEdited ? "Apply edited version" : "Replace note content"}
             </button>
+            {isEdited ? (
+              <button
+                type="button"
+                onClick={() => setEditedSuggestion(suggestion)}
+                className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Reset
+              </button>
+            ) : null}
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Smart Jotter never replaces your note until you choose to apply it.
+              Edit the suggestion before applying, or apply as-is. Your note is never replaced until you choose.
             </p>
           </div>
         </>

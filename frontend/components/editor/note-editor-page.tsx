@@ -286,12 +286,14 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
     }
   };
 
-  const handleApplySuggestion = () => {
-    if (!suggestion) {
+  const handleApplySuggestion = (editedSuggestion?: string) => {
+    const finalContent = editedSuggestion ?? suggestion;
+
+    if (!finalContent) {
       return;
     }
 
-    setContent(suggestion);
+    setContent(finalContent);
   };
 
   const handleDismissSuggestion = () => {
