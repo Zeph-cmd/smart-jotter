@@ -53,6 +53,19 @@ export function NoteList({
           <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600 dark:text-slate-300">
             {renderHighlightedText(note.content || "No content yet.", highlightQuery)}
           </p>
+          <div className="mt-4 flex items-center justify-end">
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent dark:bg-accent/20 dark:text-accent">
+              Edit note
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                className="h-3 w-3"
+                fill="currentColor"
+              >
+                <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Z" />
+              </svg>
+            </span>
+          </div>
           </article>
         </Link>
       ))}

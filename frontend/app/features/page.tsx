@@ -33,6 +33,39 @@ export default function FeaturesPage() {
         ]}
       />
 
+      <PageSectionHeading>Real example: taking lecture notes</PageSectionHeading>
+      <PageParagraph>
+        Imagine you're in a university lecture on "Cognitive Load Theory."
+        Here's how Smart Jotter fits the whole flow:
+      </PageParagraph>
+      <PageList
+        items={[
+          "Open a new note titled 'Cognitive Load Theory — Lecture 3' and start writing key points as the lecturer speaks.",
+          "Tap Improve on the rough draft, and Smart Jotter tightens your sentences without changing the meaning.",
+          "Hit Explain on a dense paragraph about 'extraneous load,' and get a plain-English breakdown you can actually remember.",
+          "Click Flashcards to auto-generate study cards like 'What is intrinsic cognitive load?' → 'The inherent difficulty of the material itself.'",
+          "Later, open Learning Mode to review those cards on a spaced-repetition schedule and take a quick quiz before exams.",
+          "Can't find a specific idea? Use Semantic Search and type 'how memory gets overwhelmed' — it finds the right note even if you never wrote those exact words."
+        ]}
+      />
+
+      <PageSectionHeading>Real example: capturing a church sermon</PageSectionHeading>
+      <PageParagraph>
+        Smart Jotter works just as well for capturing teachings, sermons, and
+        reflections — not only academic content. Here's a typical church
+        service flow:
+      </PageParagraph>
+      <PageList
+        items={[
+          "During the message, tap the speech-to-text button and dictate the main scripture and key thoughts as the pastor speaks — your hands stay free.",
+          "Edit the note afterwards to add the verse reference, the sermon title (e.g., 'Walking by Faith — Romans 4'), and any personal reflection.",
+          "Use Improve to clean up the dictated text into clean, readable notes you can share with your study group.",
+          "Use Explain to get a simple breakdown of a harder passage or theological concept.",
+          "Generate Flashcards from the sermon to memorize key verses and definitions — perfect for weekly Bible study review.",
+          "Ask Your Notes a question like 'What did the pastor say about Abraham's faith?' and get an answer drawn only from your saved notes."
+        ]}
+      />
+
       <PageSectionHeading>What each feature does (and when to use it)</PageSectionHeading>
       <PageList
         items={[

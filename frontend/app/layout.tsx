@@ -49,6 +49,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
                     Smart Jotter
                   </Link>
                   <Link
+                    href="/features"
+                    className="text-sm font-medium text-slate-600 transition hover:text-ink dark:text-slate-300 dark:hover:text-white"
+                  >
+                    Features
+                  </Link>
+                  <Link
                     href="/usage"
                     className="text-sm font-medium text-slate-600 transition hover:text-ink dark:text-slate-300 dark:hover:text-white"
                   >

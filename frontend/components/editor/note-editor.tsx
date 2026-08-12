@@ -58,7 +58,10 @@ export function NoteEditor({
   }, [content]);
 
   return (
-    <section className="rounded-[28px] border border-line bg-white p-5 shadow-jotter dark:bg-slate-900">
+    <section
+      id="note-editor"
+      className="scroll-mt-24 rounded-[28px] border border-line bg-white p-5 shadow-jotter dark:bg-slate-900"
+    >
       <div className="flex flex-col gap-4">
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="editor-title">
