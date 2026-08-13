@@ -468,8 +468,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         //      a preview/staging domain or localhost.
         //   2. window.location.origin  (fallback for local dev)
         //
-        // The reset route is /reset-password and MUST be listed in Supabase's
-        // allowed redirect URLs (Dashboard > Auth > URL Configuration).
+        // IMPORTANT — scanner-safe reset flow:
+        // The FINAL destination after Supabase exchanges the recovery token is
+        // still /reset-password (it MUST be listed in Supabase's allowed
+        // redirect URLs). BUT the link the user actually clicks in the email
+        // points at our intermediate page /reset-password/start, with the real
+        // confirmation URL passed in the URL fragment. This stops email
+        // security scanners from prefetching the single-use token.
+        //
+        // The intermediate page + the Supabase email-template change are
+        // documented in EMAIL_SECURITY.md. The Supabase "Reset Password" email
+        // template must link to:
+        //   {{ .SiteURL }}/reset-password/start#confirm={{ .ConfirmationURL }}
         const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
         const origin =
