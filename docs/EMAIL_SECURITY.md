@@ -5,9 +5,12 @@ reset experience:
 
 1. **Scanner-safe token flow** — email security scanners (Gmail, Brave Safe
    Browsing, anti-virus link previews) prefetch the reset link and burn the
-   single-use Supabase recovery token before the user clicks.
-2. **Domain authentication (SPF / DKIM / DMARC)** — missing/misconfigured DNS
-   records cause Gmail to flag reset emails as "might be dangerous".
+   single-use Supabase recovery token before the user clicks. (The actual root
+   cause of "invalid or expired" links.)
+2. **Domain authentication (SPF / DKIM / DMARC)** — verification of the
+   Resend domain records. All three are correctly configured; the Gmail
+   "might be dangerous" warning is a domain-reputation signal, not a DNS
+   problem (see section 2).
 
 ---
 
@@ -111,113 +114,65 @@ Supabase what the **final** destination is, which becomes part of
 
 ## 2. Domain authentication (SPF / DKIM / DMARC)
 
-Gmail flags the reset emails as "might be dangerous" when the sending domain
-lacks proper authentication. These records are configured in **DNS** for
-`smartjotter.com` (managed wherever the domain's nameservers live) and verified
-in the **Resend dashboard → Domains → smartjotter.com**.
-
 ### Current state (live DNS check as of the fix date)
+
+Resend intentionally splits the DNS records across hostnames by design:
+**SPF lives on the `send` subdomain**, **DKIM lives on the root domain**, and
+**DMARC lives at `_dmarc`**. This is the standard Resend architecture and is
+correctly configured — do **not** add a duplicate SPF record at the apex.
 
 | Record | Host | Status |
 |---|---|---|
-| **SPF** (TXT) | `smartjotter.com` | ❌ **MISSING** — apex has no `v=spf1` record |
+| **SPF** (TXT) | `send.smartjotter.com` | ✅ Present — `v=spf1 include:amazonses.com ~all` |
 | **DKIM** (TXT) | `resend._domainkey.smartjotter.com` | ✅ Present (valid public key) |
-| **DMARC** (TXT) | `_dmarc.smartjotter.com` | ⚠️ Present but `p=none` (no enforcement) |
+| **DMARC** (TXT) | `_dmarc.smartjotter.com` | ✅ Present — `v=DMARC1; p=none;` |
 
-**The missing SPF record is the most likely cause of Gmail flagging the
-emails.** Without SPF, Gmail cannot verify that Resend (which sends via AWS
-SES) is authorized to send on behalf of `smartjotter.com`, so it treats the
-mail as unauthenticated/suspicious.
+All three authentication records are present and correctly placed per Resend's
+architecture. **No DNS changes are required.** Adding an SPF record at the
+`smartjotter.com` apex would be redundant — Resend intentionally keeps SPF on
+the `send` subdomain.
 
-### Required DNS records
+### About the Gmail "might be dangerous" warning
 
-> Exact values are shown in the **Resend dashboard** under
-> *Domains → smartjotter.com → DNS records*. Always copy from there — the
-> DKIM key in particular is unique to your account. The records below are the
-> standard Resend setup.
+The Gmail warning on reset emails is **not** caused by missing or
+misconfigured DNS records (all auth records are verified above). It is driven
+by **domain sending reputation**:
 
-#### SPF (TXT) — **add this; it is currently missing**
+- **New/low-volume sending domains** are treated cautiously by Gmail
+  regardless of correct SPF/DKIM/DMARC setup. Gmail flags unfamiliar senders
+  as suspicious until it has observed enough legitimate sending volume to
+  establish trust.
+- The warning **improves over time** with consistent legitimate email volume
+  (real password resets being delivered and opened by real users) and a clean
+  complaint/bounce rate.
 
-```
-Type:  TXT
-Host:  smartjotter.com   (apex — i.e. "@")
-Value: v=spf1 include:amazonses.com ~all
-TTL:   3600 (or default)
-```
+This is separate from — and independent of — the token-bug fix in section 1.
+The token fix is the actual root cause of "invalid or expired" reset links;
+the Gmail warning is a reputation signal that resolves with sending history.
 
-Resend sends through Amazon SES, so the SPF record must `include:amazonses.com`.
-Use `~all` (softfail) initially; once delivery is stable you may switch to
-`-all` (hardfail) for stricter enforcement. If you already send mail from
-other providers (e.g. Google Workspace), merge their `include:` before the
-`all` mechanism — you can only have **one** SPF TXT record per host.
+### Verification commands
 
-> ⚠️ **Do not create multiple SPF TXT records.** If one already exists for
-> other services, edit it to add `include:amazonses.com` rather than adding a
-> second record. Multiple SPF records invalidate SPF entirely.
+To re-confirm the records are still live and correct:
 
-#### DKIM (TXT) — already present, verify in Resend
+```bash
+# SPF (on the send subdomain, NOT the apex)
+nslookup -type=TXT send.smartjotter.com 8.8.8.8
 
-```
-Type:  TXT
-Host:  resend._domainkey.smartjotter.com
-Value: p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQ...  (long public key from Resend)
-```
+# DKIM (on the root domain)
+nslookup -type=TXT resend._domainkey.smartjotter.com 8.8.8.8
 
-DKIM is present in DNS. Confirm it shows a green **Verified** checkmark in the
-Resend dashboard. If Resend shows a different selector or key, update the
-record to match exactly.
-
-#### DMARC (TXT) — present but recommend strengthening
-
-Currently:
-
-```
-Type:  TXT
-Host:  _dmarc.smartjotter.com
-Value: v=DMARC1; p=none;
+# DMARC
+nslookup -type=TXT _dmarc.smartjotter.com 8.8.8.8
 ```
 
-`p=none` is monitor-only (reports are sent but no mail is rejected). This is
-fine as a starting point, but once SPF + DKIM are verified and you've reviewed
-aggregate reports, tighten it:
-
-```
-v=DMARC1; p=quarantine; rua=mailto:dmarc@smartjotter.com;
-```
-
-…and eventually `p=reject` for maximum enforcement. Add a `rua=` address
-(consider a free DMARC reporting service) to receive aggregate reports and
-catch any legitimate mail that fails authentication.
-
-### Verification
-
-1. Add/fix the **SPF** record at the apex in your DNS provider.
-2. In the **Resend dashboard → Domains → smartjotter.com**, click
-   **Verify DNS records** (or "Re-verify"). All three (SPF, DKIM, DMARC)
-   should turn green.
-3. Re-check DNS propagation (may take minutes to an hour):
-
-   ```bash
-   # SPF (apex TXT) — should now show v=spf1 ...
-   nslookup -type=TXT smartjotter.com 8.8.8.8
-
-   # DMARC
-   nslookup -type=TXT _dmarc.smartjotter.com 8.8.8.8
-
-   # DKIM
-   nslookup -type=TXT resend._domainkey.smartjotter.com 8.8.8.8
-   ```
-
-4. Send a test reset email and inspect the **Authentication-Results** header
-   (e.g. via Gmail "Show original"): `spf=pass`, `dkim=pass`, and `dmarc=pass`
-   should all be present.
+Additionally, confirm all three show a green **Verified** checkmark in the
+**Resend dashboard → Domains → smartjotter.com**.
 
 ### Summary of action items
 
-- [ ] **Add SPF TXT record** at `smartjotter.com` apex:
-      `v=spf1 include:amazonses.com ~all`
-- [ ] Verify DKIM shows green in the Resend dashboard.
-- [ ] (Recommended) Strengthen DMARC from `p=none` to `p=quarantine` and add a
-      `rua=` reporting address once delivery is confirmed clean.
-- [ ] Re-verify the domain in the Resend dashboard.
-- [ ] Configure the Supabase reset email template per section 1.
+- [x] SPF verified on `send.smartjotter.com` (do **not** add at apex)
+- [x] DKIM verified on `resend._domainkey.smartjotter.com`
+- [x] DMARC present at `_dmarc.smartjotter.com` (`p=none` is fine for now)
+- [ ] Configure the Supabase reset email template per section 1
+- [ ] (Reputation) Continue sending legitimate volume; the Gmail warning
+      resolves over time as sending reputation builds
