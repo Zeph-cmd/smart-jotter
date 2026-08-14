@@ -56,6 +56,52 @@ export default function AboutPage() {
         they're genuinely useful — so the app stays simple even as it gets
         smarter. We'd love your feedback on what to build next.
       </PageParagraph>
+
+      <PageSectionHeading>Where the name came from</PageSectionHeading>
+      <PageParagraph>
+        Smart Jotter started as a conversation, not a plan. A friend of mine,
+        Saibu Suale, a pharmacy student at KSTU, was visiting my hostel one
+        evening and mentioned the term &ldquo;smart jotter&rdquo; in passing.
+        Something about it stuck. I went and dug into the idea afterward and
+        realized there was real potential there, and that&rsquo;s how this app
+        got its name.
+      </PageParagraph>
+      <PageParagraph>
+        Saibu also writes. His book,{" "}
+        <a
+          href="/tiktok-trap-interior.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-slate-600 underline transition hover:text-ink dark:text-slate-300 dark:hover:text-white"
+        >
+          TikTok Trap: Hijacker of Focus
+        </a>
+        , looks at how short-form platforms like TikTok are built to capture
+        attention and shape thinking, and how to use them without losing
+        control of your focus. If you&rsquo;ve ever wondered why you can hit
+        &ldquo;Not Interested&rdquo; on TikTok but never
+        &ldquo;Interested,&rdquo; his book gets into exactly that.{" "}
+        <a
+          href="/tiktok-trap-interior.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-slate-600 underline transition hover:text-ink dark:text-slate-300 dark:hover:text-white"
+        >
+          Find it here &rarr;
+        </a>
+      </PageParagraph>
+      <PageParagraph>
+        &mdash; Zephaniah Yumpini, Founder, Smart Jotter (
+        <a
+          href="https://zephobed.me"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-slate-600 underline transition hover:text-ink dark:text-slate-300 dark:hover:text-white"
+        >
+          zephobed.me
+        </a>
+        )
+      </PageParagraph>
     </PageShell>
   );
 }

@@ -26,6 +26,7 @@ type AuthContextValue = {
   resetPassword: (email: string) => Promise<void>;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
@@ -385,6 +386,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (error) {
           throw new Error(error.message || "Could not sign in. Check your email and password.");
         }
+      },
+      async signInWithGoogle() {
+        if (!supabase) {
+          throw new Error("Authentication is not configured yet.");
+        }
+
+        // Redirect back to the site root after Google completes. The home
+        // page (HomeShell) is the single post-login entry point: it renders
+        // NotesPage for returning users, or the AgreementScreen for first-time
+        // users who haven't accepted terms yet — so Google sign-in flows
+        // through the exact same gate as email/password. No separate path.
+        //
+        // Priority matches resetPassword():
+        //   1. NEXT_PUBLIC_SITE_URL (canonical origin for production/preview)
+        //   2. window.location.origin (local dev fallback)
+        const origin =
+          process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
+          (typeof window !== "undefined" ? window.location.origin : "");
+
+        const redirectTo = origin ? `${origin}/` : undefined;
+
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: redirectTo ? { redirectTo } : undefined
+        });
+
+        if (error) {
+          throw new Error(error.message || "Could not start Google sign-in.");
+        }
+
+        // signInWithOAuth() redirects the browser to Google's consent page,
+        // so the Promise resolves (and React state updates) are moot — the
+        // page will be unloaded. The SIGNED_IN auth-state event fires on the
+        // return landing, which HomeShell reacts to like any other sign-in.
       },
       async signOut() {
         if (!supabase) {
