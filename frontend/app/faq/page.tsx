@@ -4,7 +4,7 @@ import { PageParagraph, PageShell } from "@/components/ui/page-shell";
 export const metadata: Metadata = {
   title: "FAQ · Smart Jotter",
   description:
-    "Answers to common questions about Smart Jotter — accounts, notes, AI features, payments, and privacy."
+    "Answers to common questions about Smart Jotter: accounts, notes, AI features, payments, and privacy."
 };
 
 type FAQItem = {

@@ -263,10 +263,10 @@ function UsageBar({ used, allotted }: { used: number; allotted: number }) {
     remaining === 0
       ? "You've used all your credits. Subscribe to an AI Writing Assist plan to keep going."
       : percent >= 80
-        ? "Heads up — you're almost out of credits. Consider upgrading soon."
+        ? "Heads up! You're almost out of credits. Consider upgrading soon."
         : percent >= 50
-          ? "You're halfway through your credits. Pace yourself or top up soon."
-          : "You're in good shape — plenty of credits left.";
+        ? "You're halfway through your credits. Pace yourself or top up soon."
+        : "You're in good shape. Plenty of credits left.";
 
   return (
     <div className="mt-6">

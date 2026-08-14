@@ -13,7 +13,7 @@ export default function ContactPage() {
     <PageShell
       eyebrow="Contact"
       title="Contact & Feedback"
-      subtitle="Questions, bug reports, or ideas — we'd genuinely love to hear from you."
+      subtitle="Questions, bug reports, or ideas. We'd genuinely love to hear from you."
     >
       <ContactForm />
     </PageShell>

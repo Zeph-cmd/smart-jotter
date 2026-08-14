@@ -17,12 +17,12 @@ export default function AboutPage() {
     <PageShell
       eyebrow="About"
       title="What is Smart Jotter?"
-      subtitle="A calm place to capture notes — and an AI companion that helps you turn them into real understanding."
+      subtitle="A calm place to capture notes with an AI companion that helps you turn them into real understanding."
     >
       <PageSectionHeading>Our mission</PageSectionHeading>
       <PageParagraph>
         Smart Jotter started as a simple, minimal note-taking app. We believe
-        writing things down should be fast, distraction-free, and pleasant —
+        writing things down should be fast, distraction-free, and pleasant,
         whether you're in a lecture, a meeting, or just thinking out loud.
         Around that calm core, we're building AI features that help you
         organize, summarize, and actually learn from what you write.
@@ -53,7 +53,7 @@ export default function AboutPage() {
       <PageParagraph>
         Smart Jotter is being carefully grown into an AI-first knowledge
         system. New capabilities are rolled out gradually and only when
-        they're genuinely useful — so the app stays simple even as it gets
+        they're genuinely useful, so the app stays simple even as it gets
         smarter. We'd love your feedback on what to build next.
       </PageParagraph>
 

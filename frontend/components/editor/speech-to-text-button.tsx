@@ -197,7 +197,7 @@ export function SpeechToTextButton({
         aria-expanded={isOpen}
         title={
           quotaExhausted
-            ? "Recording limit reached — tap to upgrade"
+            ? "Recording limit reached. Tap to upgrade"
             : undefined
         }
         className={
@@ -264,7 +264,7 @@ export function SpeechToTextButton({
                 onClick={() => setShowSubscription(true)}
                 className="font-medium text-accent underline hover:text-blue-700 dark:text-blue-400"
               >
-                Recording limit reached — tap to upgrade
+                Recording limit reached. Tap to upgrade
               </button>
             ) : (
               `${formatQuota(quota.remainingSeconds)} of audio left.`

@@ -25,7 +25,7 @@ export function SiteFooter() {
             </Link>
             <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
               A minimal note-taking app built to grow into an AI-first knowledge
-              system — for students, professionals, and lifelong learners.
+              system for students, professionals, and lifelong learners.
             </p>
           </div>
 

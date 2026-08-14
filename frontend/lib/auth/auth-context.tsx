@@ -395,7 +395,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Redirect back to the site root after Google completes. The home
         // page (HomeShell) is the single post-login entry point: it renders
         // NotesPage for returning users, or the AgreementScreen for first-time
-        // users who haven't accepted terms yet — so Google sign-in flows
+        // users who haven't accepted terms yet, so Google sign-in flows
         // through the exact same gate as email/password. No separate path.
         //
         // Priority matches resetPassword():
@@ -417,7 +417,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         // signInWithOAuth() redirects the browser to Google's consent page,
-        // so the Promise resolves (and React state updates) are moot — the
+        // so the Promise resolves (and React state updates) are moot. The
         // page will be unloaded. The SIGNED_IN auth-state event fires on the
         // return landing, which HomeShell reacts to like any other sign-in.
       },

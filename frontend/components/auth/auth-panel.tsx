@@ -46,6 +46,26 @@ export function AuthPanel() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      await signInWithGoogle();
+      // signInWithOAuth() redirects the browser to Google. If the Promise
+      // resolves without error, keep the loading spinner on. The page will
+      // unload during the redirect. Any thrown error is caught below.
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not start Google sign-in."
+      );
+      setIsGoogleLoading(false);
+    }
+  };
+
   const handleResendConfirmation = async () => {
     setIsResending(true);
     setMessage(null);
@@ -62,26 +82,6 @@ export function AuthPanel() {
       );
     } finally {
       setIsResending(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    setError(null);
-    setMessage(null);
-
-    try {
-      await signInWithGoogle();
-      // signInWithOAuth() redirects the browser to Google. If the Promise
-      // resolves without error, keep the loading spinner on — the page will
-      // unload during the redirect. Any thrown error is caught below.
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Could not start Google sign-in."
-      );
-      setIsGoogleLoading(false);
     }
   };
 

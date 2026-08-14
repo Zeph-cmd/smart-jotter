@@ -11,10 +11,10 @@ import { useAuth } from "@/lib/auth/auth-context";
  * the auth context's acceptTerms(), which writes agreed_to_terms = true.
  */
 const TERMS = [
-  "Your notes and data are private — no other user can access them.",
+  "Your notes and data are private. No other user can access them.",
   "Smart Jotter is provided as-is; we do our best to keep it safe and reliable, but no system is 100% guaranteed against issues.",
-  "Please don't paste sensitive info (passwords, ID numbers, financial details, etc.) into the AI features — treat AI tools like a smart assistant, not a vault.",
-  "Use Smart Jotter for legitimate note-taking and productivity only — not for illegal, harmful, or abusive purposes.",
+  "Please don't paste sensitive info (passwords, ID numbers, financial details, etc.) into the AI features. Treat AI tools like a smart assistant, not a vault.",
+  "Use Smart Jotter for legitimate note-taking and productivity only, not for illegal, harmful, or abusive purposes.",
   "Violating this may result in loss of access."
 ];
 

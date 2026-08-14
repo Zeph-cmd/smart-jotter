@@ -27,7 +27,7 @@ export function ContactForm() {
       `Smart Jotter feedback from ${name || "a user"}`
     );
     const body = encodeURIComponent(
-      `${message}\n\n— ${name || "Anonymous"}${email ? `\nReply to: ${email}` : ""}`
+      `${message}\n\nFrom: ${name || "Anonymous"}${email ? `\nReply to: ${email}` : ""}`
     );
 
     window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
@@ -57,7 +57,7 @@ export function ContactForm() {
         <PageSectionHeading>Send feedback</PageSectionHeading>
         <PageParagraph>
           Use the form below to share a quick message. It will open your email
-          app with everything filled in — no account required.
+          app with everything filled in. No account required.
         </PageParagraph>
 
         {submitted ? (
@@ -125,7 +125,7 @@ export function ContactForm() {
             "Features you wish Smart Jotter had.",
             "Anything confusing or hard to use.",
             "Bugs or unexpected behavior you ran into.",
-            "How you're using the app — students, professionals, or otherwise."
+            "How you're using the app: students, professionals, or otherwise."
           ]}
         />
       </div>
