@@ -122,6 +122,9 @@ export const RATE_LIMITS = {
   passwordReset: { limit: 3, windowMs: 15 * 60 * 1000 },
   /** Payment verification — 10 per user per 10 min. */
   paymentVerify: { limit: 10, windowMs: 10 * 60 * 1000 },
+  /** Payment status polling — 30 per user per 60s (read-only; the Android
+   *  app polls every few seconds after returning from a payment). */
+  paymentStatus: { limit: 30, windowMs: 60 * 1000 },
   /** AI ask/search/suggest — 20 per user per 60s (burst allowance). */
   ai: { limit: 20, windowMs: 60 * 1000 },
   /** Audio transcription — 10 per user per 60s (heavy cost). */
