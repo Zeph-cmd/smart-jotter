@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AI_SUBSCRIPTION_PLANS,
   PAYMENT_CONTACT,
@@ -16,6 +16,15 @@ type PaymentStatus = {
   state: "idle" | "paying" | "success" | "error";
   message?: string;
 };
+
+declare global {
+  interface Window {
+    ApplePaySession?: {
+      canMakePayments?: () => boolean;
+      canMakePaymentsWithActiveCard?: () => boolean;
+    };
+  }
+}
 
 /**
  * A green banner shown app-wide. When clicked, it expands to reveal the two
@@ -147,6 +156,18 @@ function PlanCard({
   const { user } = useAuth();
   const [status, setStatus] = useState<PaymentStatus>({ state: "idle" });
   const [showMomo, setShowMomo] = useState(false);
+  const [supportsApplePay, setSupportsApplePay] = useState(false);
+
+  useEffect(() => {
+    const applePayAvailable =
+      typeof window !== "undefined" &&
+      "ApplePaySession" in window &&
+      typeof window.ApplePaySession !== "undefined" &&
+      (window.ApplePaySession.canMakePayments?.() ||
+        window.ApplePaySession.canMakePaymentsWithActiveCard?.());
+
+    setSupportsApplePay(Boolean(applePayAvailable));
+  }, []);
 
   async function handlePay() {
     if (!user) {
@@ -229,12 +250,82 @@ function PlanCard({
         </div>
       ) : null}
 
+      {supportsApplePay ? (
+        <button
+          type="button"
+          onClick={async () => {
+            if (!user) {
+              setStatus({
+                state: "error",
+                message: "Please sign in first to subscribe."
+              });
+              return;
+            }
+
+            setStatus({ state: "paying" });
+
+            try {
+              const metadata: PaystackMetadata = {
+                user_id: user.id,
+                plan_type: planType,
+                plan_id: planId as PaystackMetadata["plan_id"]
+              };
+
+              const { reference } = await payWithPaystack({
+                email: user.email ?? "",
+                amountGhs: priceGhs,
+                metadata
+              });
+
+              const res = await fetch("/api/paystack/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ reference })
+              });
+
+              const data = (await res.json()) as {
+                success?: boolean;
+                message?: string;
+                error?: string;
+              };
+
+              if (res.ok && data.success) {
+                setStatus({
+                  state: "success",
+                  message: data.message ?? "Subscription activated successfully!"
+                });
+              } else {
+                setStatus({
+                  state: "error",
+                  message:
+                    data.error ??
+                    "Verification failed. If you were charged, please contact support."
+                });
+              }
+            } catch (error) {
+              setStatus({
+                state: "error",
+                message:
+                  error instanceof Error ? error.message : "Payment failed. Please try again."
+              });
+            }
+          }}
+          disabled={status.state === "paying"}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 text-sm font-bold text-white transition hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <span aria-hidden="true" className="text-lg leading-none">
+            
+          </span>
+          {status.state === "paying" ? "Processing…" : `Pay ${priceGhs} GHS with Apple Pay`}
+        </button>
+      ) : null}
+
       {/* Pay with Paystack */}
       <button
         type="button"
         onClick={handlePay}
         disabled={status.state === "paying"}
-        className="mt-4 w-full rounded-lg bg-white px-4 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-3 w-full rounded-lg bg-white px-4 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {status.state === "paying" ? "Processing…" : `Pay ${priceGhs} GHS with Paystack`}
       </button>
