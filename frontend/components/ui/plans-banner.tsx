@@ -159,8 +159,9 @@ function PlanCard({
   const [supportsApplePay, setSupportsApplePay] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const applePayAvailable =
-      typeof window !== "undefined" &&
       "ApplePaySession" in window &&
       typeof window.ApplePaySession !== "undefined" &&
       (window.ApplePaySession.canMakePayments?.() ||
@@ -318,6 +319,93 @@ function PlanCard({
           </span>
           {status.state === "paying" ? "Processing…" : `Pay ${priceGhs} GHS with Apple Pay`}
         </button>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={async () => {
+          if (!supportsApplePay) {
+            setStatus({
+              state: "error",
+              message:
+                "Apple Pay is available in Safari on supported Apple devices. Use the Paystack option on this browser."
+            });
+            return;
+          }
+
+          if (!user) {
+            setStatus({
+              state: "error",
+              message: "Please sign in first to subscribe."
+            });
+            return;
+          }
+
+          setStatus({ state: "paying" });
+
+          try {
+            const metadata: PaystackMetadata = {
+              user_id: user.id,
+              plan_type: planType,
+              plan_id: planId as PaystackMetadata["plan_id"]
+            };
+
+            const { reference } = await payWithPaystack({
+              email: user.email ?? "",
+              amountGhs: priceGhs,
+              metadata
+            });
+
+            const res = await fetch("/api/paystack/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reference })
+            });
+
+            const data = (await res.json()) as {
+              success?: boolean;
+              message?: string;
+              error?: string;
+            };
+
+            if (res.ok && data.success) {
+              setStatus({
+                state: "success",
+                message: data.message ?? "Subscription activated successfully!"
+              });
+            } else {
+              setStatus({
+                state: "error",
+                message:
+                  data.error ??
+                  "Verification failed. If you were charged, please contact support."
+              });
+            }
+          } catch (error) {
+            setStatus({
+              state: "error",
+              message:
+                error instanceof Error ? error.message : "Payment failed. Please try again."
+            });
+          }
+        }}
+        disabled={status.state === "paying"}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 text-sm font-bold text-white transition hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-black"
+      >
+        <span aria-hidden="true" className="text-lg leading-none">
+          
+        </span>
+        {status.state === "paying"
+          ? "Processing…"
+          : supportsApplePay
+            ? `Pay ${priceGhs} GHS with Apple Pay`
+            : `Apple Pay unavailable on this browser`}
+      </button>
+
+      {!supportsApplePay ? (
+        <p className="mt-2 text-center text-[11px] font-medium text-emerald-50/90">
+          Apple Pay appears in Safari on supported Apple devices. Use Paystack on other browsers.
+        </p>
       ) : null}
 
       {/* Pay with Paystack */}
