@@ -50,6 +50,7 @@ export function SiteFooter() {
 
         <div className="mt-10 border-t border-line/60 pt-6 text-xs text-slate-500 dark:text-slate-400">
           <p>© {year} Smart Jotter. All rights reserved.</p>
+          <p className="mt-1">Smart Jotter isn&apos;t legally registered YET.</p>
           <p className="mt-1">
             For support, email{" "}
             <a

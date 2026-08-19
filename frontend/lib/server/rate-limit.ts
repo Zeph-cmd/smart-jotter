@@ -128,5 +128,7 @@ export const RATE_LIMITS = {
   /** AI ask/search/suggest — 20 per user per 60s (burst allowance). */
   ai: { limit: 20, windowMs: 60 * 1000 },
   /** Audio transcription — 10 per user per 60s (heavy cost). */
-  transcribe: { limit: 10, windowMs: 60 * 1000 }
+  transcribe: { limit: 10, windowMs: 60 * 1000 },
+  /** Account deletion — 2 attempts per user per 15 min. */
+  accountDeletion: { limit: 2, windowMs: 15 * 60 * 1000 }
 } as const;

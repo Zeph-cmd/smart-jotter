@@ -60,6 +60,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   >
                     Usage
                   </Link>
+                  <Link
+                    href="/settings"
+                    className="text-sm font-medium text-slate-600 transition hover:text-ink dark:text-slate-300 dark:hover:text-white"
+                  >
+                    Settings
+                  </Link>
                 </div>
                 <ThemeToggle />
               </div>
