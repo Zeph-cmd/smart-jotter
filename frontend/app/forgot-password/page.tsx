@@ -264,6 +264,12 @@ export default function ForgotPasswordPage() {
                 >
                   Use a different email
                 </button>
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  Back to login
+                </Link>
               </div>
             </form>
           )}
