@@ -128,6 +128,16 @@ export async function updateNoteRequest(
   return data.note;
 }
 
+export async function deleteNoteRequest(id: string) {
+  await apiRequest<ApiErrorResponse>(`/api/notes/${id}`, {
+    errorMessages: {
+      default: "Could not delete that note.",
+      unauthorized: "Please sign in to delete notes."
+    },
+    method: "DELETE"
+  });
+}
+
 export async function searchNotesRequest(query: string) {
   const data = await apiRequest<NotesResponse>(
     `/api/search?query=${encodeURIComponent(query)}`,
@@ -345,7 +355,7 @@ type ApiRequestOptions = {
     /** Message used when the API returns 402 Payment Required (credits/quota exhausted). */
     paymentRequired?: string;
   };
-  method?: "GET" | "POST" | "PATCH";
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
   retries?: number;
 };
 

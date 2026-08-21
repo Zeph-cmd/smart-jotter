@@ -126,6 +126,22 @@ export async function updateNote(
   return data;
 }
 
+export async function deleteNote(
+  supabase: SupabaseClient,
+  userId: string,
+  id: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("sj_notes")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function searchNotesByVector(
   supabase: SupabaseClient,
   userId: string,

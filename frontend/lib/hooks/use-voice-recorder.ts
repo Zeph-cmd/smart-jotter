@@ -11,6 +11,21 @@ export type VoiceRecorderStatus =
 /** Hard cap on a single continuous recording: 30 minutes. */
 export const MAX_RECORDING_SECONDS = 30 * 60;
 
+type WakeLockSentinelLike = {
+  released: boolean;
+  release: () => Promise<void>;
+  addEventListener?: (
+    type: "release",
+    listener: () => void
+  ) => void;
+};
+
+type NavigatorWithWakeLock = Navigator & {
+  wakeLock?: {
+    request: (type: "screen") => Promise<WakeLockSentinelLike>;
+  };
+};
+
 type UseVoiceRecorderResult = {
   status: VoiceRecorderStatus;
   error: string | null;
@@ -43,6 +58,7 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
   const startTimeRef = useRef<number>(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStopTriggeredRef = useRef(false);
+  const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
 
   const clearTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -57,6 +73,46 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
     streamRef.current = null;
   }, [clearTimer]);
 
+  const releaseWakeLock = useCallback(async () => {
+    const currentWakeLock = wakeLockRef.current;
+
+    if (!currentWakeLock) {
+      return;
+    }
+
+    try {
+      await currentWakeLock.release();
+    } catch {
+      // Some browsers auto-release and throw if release() is called again.
+    } finally {
+      wakeLockRef.current = null;
+    }
+  }, []);
+
+  const requestWakeLock = useCallback(async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const navigatorWithWakeLock = navigator as NavigatorWithWakeLock;
+
+    if (!navigatorWithWakeLock.wakeLock?.request) {
+      return;
+    }
+
+    try {
+      const sentinel = await navigatorWithWakeLock.wakeLock.request("screen");
+      wakeLockRef.current = sentinel;
+      sentinel.addEventListener?.("release", () => {
+        wakeLockRef.current = null;
+      });
+    } catch {
+      // Wake Lock can fail on unsupported devices, low battery, or policy.
+      // Recording still continues as best effort without it.
+      wakeLockRef.current = null;
+    }
+  }, []);
+
   const reset = useCallback(() => {
     setStatus("idle");
     setError(null);
@@ -65,10 +121,12 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
     recorderRef.current = null;
     stopResolverRef.current = null;
     autoStopTriggeredRef.current = false;
-  }, []);
+    void releaseWakeLock();
+  }, [releaseWakeLock]);
 
   const finalizeRecording = useCallback(() => {
     cleanupStream();
+    void releaseWakeLock();
 
     const durationSeconds = Math.round(
       (Date.now() - startTimeRef.current) / 1000
@@ -88,7 +146,7 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
     setElapsedSeconds(0);
     stopResolverRef.current?.({ blob, durationSeconds });
     stopResolverRef.current = null;
-  }, [cleanupStream]);
+  }, [cleanupStream, releaseWakeLock]);
 
   const startRecording = useCallback(async () => {
     setError(null);
@@ -117,11 +175,26 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
         }
       };
 
+      const [audioTrack] = stream.getAudioTracks();
+      if (audioTrack) {
+        audioTrack.onended = () => {
+          setError(
+            "Recording was interrupted by your device or browser. Keep Smart Jotter active and try again."
+          );
+          const current = recorderRef.current;
+
+          if (current && current.state !== "inactive") {
+            current.stop();
+          }
+        };
+      }
+
       recorder.onstop = () => {
         finalizeRecording();
       };
 
       recorder.start();
+      await requestWakeLock();
       setStatus("recording");
       startTimeRef.current = Date.now();
       setElapsedSeconds(0);
@@ -147,16 +220,18 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
       }, 1000);
     } catch {
       cleanupStream();
+      void releaseWakeLock();
       setError("Microphone access was denied.");
       setStatus("idle");
     }
-  }, [cleanupStream, finalizeRecording]);
+  }, [cleanupStream, finalizeRecording, releaseWakeLock, requestWakeLock]);
 
   const stopRecording = useCallback(async () => {
     const recorder = recorderRef.current;
 
     if (!recorder || recorder.state === "inactive") {
       cleanupStream();
+      void releaseWakeLock();
       setStatus("idle");
       const durationSeconds = Math.round(
         (Date.now() - startTimeRef.current) / 1000
@@ -172,18 +247,42 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
         recorder.stop();
       }
     );
-  }, [cleanupStream]);
+  }, [cleanupStream, releaseWakeLock]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (status !== "recording" && status !== "stopping") {
+        return;
+      }
+
+      if (wakeLockRef.current) {
+        return;
+      }
+
+      void requestWakeLock();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [requestWakeLock, status]);
 
   useEffect(() => {
     return () => {
       cleanupStream();
+      void releaseWakeLock();
       const recorder = recorderRef.current;
 
       if (recorder && recorder.state !== "inactive") {
         recorder.stop();
       }
     };
-  }, [cleanupStream]);
+  }, [cleanupStream, releaseWakeLock]);
 
   return {
     status,

@@ -13,6 +13,7 @@ import { areFeaturesEnabled } from "@/lib/config/features";
 import {
   ApiRequestError,
   askNotesRequest,
+  deleteNoteRequest,
   fetchNotes,
   searchNotesRequest
 } from "@/lib/notes-api";
@@ -56,6 +57,7 @@ export function NotesPage() {
   const [answer, setAnswer] = useState<string | null>(null);
   const [answerSources, setAnswerSources] = useState<Note[]>([]);
   const [showSubscription, setShowSubscription] = useState(false);
+  const [isDeletingNoteId, setIsDeletingNoteId] = useState<string | null>(null);
   const searchCacheRef = useRef(new Map<string, Note[]>());
   const notesCacheKey = useMemo(
     () => `smart-jotter:notes-cache:${user?.id ?? "guest"}`,
@@ -169,6 +171,35 @@ export function NotesPage() {
     setDisplayedNotes(notes);
     setIsSearchActive(false);
     setSearchError(null);
+  };
+
+  const handleDeleteNote = async (note: Note) => {
+    setIsDeletingNoteId(note.id);
+    setError(null);
+
+    try {
+      await deleteNoteRequest(note.id);
+
+      setNotes((currentNotes) => {
+        const nextNotes = currentNotes.filter((currentNote) => currentNote.id !== note.id);
+        writeNotesCache(notesCacheKey, nextNotes);
+        return nextNotes;
+      });
+
+      setDisplayedNotes((currentDisplayedNotes) =>
+        currentDisplayedNotes.filter((currentNote) => currentNote.id !== note.id)
+      );
+
+      searchCacheRef.current.clear();
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not delete that note."
+      );
+    } finally {
+      setIsDeletingNoteId(null);
+    }
   };
 
   const handleAsk = async () => {
@@ -352,6 +383,9 @@ export function NotesPage() {
             highlightQuery={isSearchVisible ? searchQuery : ""}
             notes={displayedNotes}
             isLoading={isLoading}
+            collapsePreviewCount={isSearchVisible ? undefined : 4}
+            isDeletingNoteId={isDeletingNoteId}
+            onDeleteNote={handleDeleteNote}
           />
         </section>
       </div>

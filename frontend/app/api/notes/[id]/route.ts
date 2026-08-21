@@ -5,7 +5,7 @@ import {
   requireUserId
 } from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
-import { getNoteById, updateNote } from "@/lib/notes-service";
+import { deleteNote, getNoteById, updateNote } from "@/lib/notes-service";
 
 type RouteContext = {
   params: Promise<{
@@ -58,6 +58,22 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ note });
   } catch (error) {
     return handleRouteError("api-note-get", error, "Could not load that note.", {
+      noteId: id
+    });
+  }
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  const { id } = await context.params;
+
+  try {
+    const { supabase, user } = await requireAuthenticatedClient();
+    const userId = requireUserId(user);
+    await requireTermsAccepted(supabase, userId);
+    await deleteNote(supabase, userId, id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return handleRouteError("api-note-delete", error, "Could not delete that note.", {
       noteId: id
     });
   }
