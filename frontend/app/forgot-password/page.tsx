@@ -18,7 +18,7 @@ function getVerifyOtpErrorMessage(message: string) {
     normalized.includes("otp") ||
     normalized.includes("code")
   ) {
-    return "That code is not valid. Check the 6-digit code in your email and try again.";
+    return "That code is not valid. Check the 8-digit code in your email and try again.";
   }
 
   return "We could not verify that code right now. Please try again.";
@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
     } finally {
       setRequestedEmail(trimmedEmail);
       setInfoMessage(
-        "If an account exists for that email, we sent a 6-digit recovery code. " +
+        "If an account exists for that email, we sent an 8-digit recovery code. " +
           "Enter that code below with your new password."
       );
       setIsRequestSubmitting(false);
@@ -89,8 +89,8 @@ export default function ForgotPasswordPage() {
 
     const sanitizedCode = otpCode.replace(/\s+/g, "");
 
-    if (!/^\d{6}$/.test(sanitizedCode)) {
-      setErrorMessage("Enter the 6-digit code from your email.");
+    if (!/^\d{8}$/.test(sanitizedCode)) {
+      setErrorMessage("Enter the 8-digit code from your email.");
       return;
     }
 
@@ -140,8 +140,8 @@ export default function ForgotPasswordPage() {
           </h1>
           <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
             {isOtpStep
-              ? "Enter the 6-digit recovery code from your email and choose a new password."
-              : "Enter your email and we'll send you a 6-digit recovery code."}
+              ? "Enter the 8-digit recovery code from your email and choose a new password."
+              : "Enter your email and we'll send you an 8-digit recovery code."}
           </p>
 
           {!isOtpStep ? (
@@ -187,20 +187,20 @@ export default function ForgotPasswordPage() {
                   className="text-sm font-medium text-slate-700 dark:text-slate-200"
                   htmlFor="forgot-otp"
                 >
-                  6-digit code
+                  8-digit code
                 </label>
                 <input
                   id="forgot-otp"
                   type="text"
                   inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
+                  pattern="[0-9]{8}"
+                  maxLength={8}
                   value={otpCode}
                   onChange={(event) =>
-                    setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                    setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 8))
                   }
                   className="w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-sm tracking-[0.3em] text-ink outline-none transition focus:border-accent focus:bg-white dark:bg-slate-950 dark:text-slate-100 dark:focus:bg-slate-900"
-                  placeholder="123456"
+                  placeholder="12345678"
                   required
                 />
               </div>
@@ -264,12 +264,6 @@ export default function ForgotPasswordPage() {
                 >
                   Use a different email
                 </button>
-                <Link
-                  href="/reset-password"
-                  className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  Use reset link instead
-                </Link>
               </div>
             </form>
           )}
