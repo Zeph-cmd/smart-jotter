@@ -270,7 +270,7 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
       setSuggestion(nextSuggestion);
     } catch (caughtError) {
       setSuggestion(null);
-      // 402 = out of credits → surface the subscription/MoMo prompt.
+      // 402 = out of credits -> surface the subscription prompt.
       if (caughtError instanceof ApiRequestError && caughtError.status === 402) {
         setShowSubscription(true);
         setSuggestionError(null);
@@ -318,7 +318,7 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
       setFlashcards(pairs);
     } catch (caughtError) {
       setFlashcards([]);
-      // 402 = out of credits → surface the subscription/MoMo prompt.
+      // 402 = out of credits -> surface the subscription prompt.
       if (caughtError instanceof ApiRequestError && caughtError.status === 402) {
         setShowSubscription(true);
         setFlashcardsError(null);

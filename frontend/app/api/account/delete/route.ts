@@ -111,7 +111,6 @@ export async function POST(request: Request) {
   const tables = [
     "sj_flashcards",
     "sj_notes",
-    "sj_folders",
     "sj_ai_usage_log",
     "sj_audio_usage",
     "sj_paystack_transactions",

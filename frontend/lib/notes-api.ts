@@ -362,7 +362,7 @@ type ApiRequestOptions = {
 /**
  * Error thrown by `apiRequest`. Carries the HTTP `status` so callers can react
  * to specific codes — in particular 402 (credits/quota exhausted), which should
- * open the subscription/MoMo prompt instead of showing a plain text message.
+ * open the subscription prompt instead of showing a plain text message.
  */
 export class ApiRequestError extends Error {
   status?: number;

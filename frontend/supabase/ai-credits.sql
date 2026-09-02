@@ -9,8 +9,8 @@
 --   credits_allotted = total credits the user's plan grants.
 --     DEFAULT IS 60 — TEMPORARY early-access starter grant for new signups
 --     (manual testing / early-access only). Once real subscriptions launch,
---     credits should come from MANUAL activation after payment confirmation
---     (via WhatsApp/MoMo), NOT automatic signup. At that point, change this
+--     credits should come from verified Paystack payments, NOT automatic
+--     signup. At that point, change this
 --     default back to 0 and gate credits behind the activation flow.
 --   credits_used     = cumulative AI credits consumed
 --   Remaining = credits_allotted - credits_used

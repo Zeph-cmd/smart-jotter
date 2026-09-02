@@ -1,54 +1,9 @@
 create extension if not exists "pgcrypto";
 create extension if not exists vector;
 
-create table if not exists public.sj_folders (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id),
-  name text not null,
-  created_at timestamp with time zone not null default timezone('utc', now())
-);
-
-alter table public.sj_folders
-alter column user_id set default auth.uid();
-
-create index if not exists sj_folders_user_id_idx on public.sj_folders (user_id);
-
-alter table public.sj_folders enable row level security;
-
-drop policy if exists "Allow users read own sj_folders" on public.sj_folders;
-drop policy if exists "Allow users insert own sj_folders" on public.sj_folders;
-drop policy if exists "Allow users update own sj_folders" on public.sj_folders;
-drop policy if exists "Allow users delete own sj_folders" on public.sj_folders;
-
-create policy "Allow users read own sj_folders"
-on public.sj_folders
-for select
-to authenticated
-using (auth.uid() = user_id);
-
-create policy "Allow users insert own sj_folders"
-on public.sj_folders
-for insert
-to authenticated
-with check (auth.uid() = user_id);
-
-create policy "Allow users update own sj_folders"
-on public.sj_folders
-for update
-to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
-create policy "Allow users delete own sj_folders"
-on public.sj_folders
-for delete
-to authenticated
-using (auth.uid() = user_id);
-
 create table if not exists public.sj_notes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id),
-  folder_id uuid references public.sj_folders(id) on delete set null,
   title text not null,
   content text not null default '',
   created_at timestamp with time zone not null default timezone('utc', now())
@@ -96,7 +51,6 @@ $$;
 grant execute on function public.match_sj_notes(uuid, vector, int) to authenticated;
 
 create index if not exists sj_notes_user_id_idx on public.sj_notes (user_id);
-create index if not exists sj_notes_folder_id_idx on public.sj_notes (folder_id);
 create index if not exists sj_notes_embedding_idx
 on public.sj_notes
 using ivfflat (embedding vector_cosine_ops)

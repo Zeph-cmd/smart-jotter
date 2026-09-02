@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   AI_SUBSCRIPTION_PLANS,
-  PAYMENT_CONTACT,
   SUBSCRIPTION_PLANS
 } from "@/lib/config/plans";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -35,8 +34,7 @@ declare global {
  *      (ai_subscription_status)
  *
  * The two are independent purchases; a user can subscribe to either, both,
- * or neither. Both use the Paystack payment popup (instant activation), with
- * a manual MoMo + WhatsApp option as fallback.
+ * or neither. Both use the Paystack payment popup for instant activation.
  */
 export function PlansBanner() {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -155,7 +153,6 @@ function PlanCard({
 }: PlanCardProps) {
   const { user } = useAuth();
   const [status, setStatus] = useState<PaymentStatus>({ state: "idle" });
-  const [showMomo, setShowMomo] = useState(false);
   const [supportsApplePay, setSupportsApplePay] = useState(false);
 
   useEffect(() => {
@@ -418,71 +415,6 @@ function PlanCard({
         {status.state === "paying" ? "Processing…" : `Pay ${priceGhs} GHS with Paystack`}
       </button>
 
-      {/* MoMo fallback toggle */}
-      <button
-        type="button"
-        onClick={() => setShowMomo((v) => !v)}
-        className="mt-3 text-center text-xs text-emerald-100 underline hover:text-white"
-      >
-        Prefer to pay via Mobile Money instead?
-      </button>
-
-      {showMomo ? <MoMoInstructions /> : null}
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* MoMo + WhatsApp fallback instructions (collapsible)                        */
-/* -------------------------------------------------------------------------- */
-
-function MoMoInstructions() {
-  return (
-    <div className="mt-3 rounded-2xl border border-emerald-400/40 bg-emerald-700/50 p-4">
-      <h3 className="text-sm font-semibold uppercase tracking-wide">
-        Manual Mobile Money payment
-      </h3>
-      <ol className="mt-3 space-y-2 text-sm text-emerald-50">
-        <li className="flex gap-2">
-          <span className="font-bold">1.</span>
-          <span>
-            Send to{" "}
-            <span className="font-semibold">
-              {PAYMENT_CONTACT.momoNetwork} MoMo {PAYMENT_CONTACT.momoNumber}
-            </span>
-          </span>
-        </li>
-        <li className="flex gap-2">
-          <span className="font-bold">2.</span>
-          <span>
-            Registered name:{" "}
-            <span className="font-semibold">{PAYMENT_CONTACT.registeredName}</span>
-          </span>
-        </li>
-        <li className="flex gap-2">
-          <span className="font-bold">3.</span>
-          <span>Screenshot the confirmation message</span>
-        </li>
-        <li className="flex gap-2">
-          <span className="font-bold">4.</span>
-          <span>
-            Send it to{" "}
-            <a
-              href={`https://wa.me/${PAYMENT_CONTACT.whatsappNumber}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold underline"
-            >
-              WhatsApp {PAYMENT_CONTACT.whatsappNumber}
-            </a>{" "}
-            with the plan name
-          </span>
-        </li>
-      </ol>
-      <p className="mt-3 text-xs text-emerald-100">
-        Activation is manual — you'll be unlocked shortly after sending the
-        screenshot.
-      </p>
     </div>
   );
 }

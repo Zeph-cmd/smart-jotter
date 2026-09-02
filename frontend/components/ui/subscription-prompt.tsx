@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import {
   AI_SUBSCRIPTION_PLANS,
-  PAYMENT_CONTACT,
   SUBSCRIPTION_PLANS,
   type AiSubscriptionPlan,
   type SubscriptionPlan
@@ -24,13 +23,12 @@ type SubscriptionPromptProps = {
 };
 
 /**
- * Manual payment flow shown when a user hits their free-tier or subscription
- * limit. Two variants share the same MoMo + WhatsApp flow:
+ * Subscription options shown when a user hits their free-tier or subscription
+ * limit. Two variants share the same plan display:
  *   - "speech": Speech-to-Text recording-time plans
  *   - "ai": AI Writing Assist credit plans (Simplify/Improve/Explain/Search/Ask)
  *
- * No in-app payment is processed — the developer activates the subscription
- * manually in Supabase after confirming payment.
+ * Payment is handled through the Paystack checkout in the plans banner.
  */
 export function SubscriptionPrompt({
   isOpen,
@@ -133,46 +131,6 @@ export function SubscriptionPrompt({
             : SUBSCRIPTION_PLANS.map((plan) => (
                 <SpeechPlanCard key={plan.id} plan={plan} />
               ))}
-        </div>
-
-        {/* Payment instructions */}
-        <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-500/30 dark:bg-blue-500/10">
-          <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-            How to activate
-          </h3>
-          <ol className="mt-3 space-y-2 text-sm text-blue-800 dark:text-blue-200">
-            <li className="flex gap-2">
-              <span className="font-bold">1.</span>
-              <span>
-                Send your chosen amount to{" "}
-                <span className="font-semibold">MoMo {PAYMENT_CONTACT.momoNumber}</span>
-              </span>
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold">2.</span>
-              <span>Screenshot the confirmation message</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold">3.</span>
-              <span>
-                Send it to{" "}
-                <a
-                  href={`https://wa.me/${PAYMENT_CONTACT.whatsappNumber}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold underline"
-                >
-                  WhatsApp {PAYMENT_CONTACT.whatsappNumber}
-                </a>{" "}
-                and mention which {isAi ? "AI Writing Assist" : "Speech-to-Text"}{" "}
-                plan you paid for
-              </span>
-            </li>
-          </ol>
-          <p className="mt-4 text-xs text-blue-700 dark:text-blue-300">
-            Registered name: {PAYMENT_CONTACT.registeredName}. Activation is
-            manual — you'll be unlocked shortly after sending the screenshot.
-          </p>
         </div>
 
         <button

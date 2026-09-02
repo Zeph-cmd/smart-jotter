@@ -9,12 +9,12 @@
 --
 -- Run this once in the Supabase SQL editor. It is idempotent (safe to re-run).
 --
--- AI CREDIT PLANS (manual activation via MoMo + WhatsApp):
---   Plan A: 50 GHS  — 3,000 credits — valid 1 week
---   Plan B: 100 GHS — 6,000 credits — valid 1 month
+-- AI CREDIT PLANS (paid via Paystack):
+--   Plan A: 50 GHS  — 200 credits — valid 1 week
+--   Plan B: 100 GHS — 400 credits — valid 1 month
 --
 -- Manual activation (via Supabase table editor) sets:
---   credits_allotted         = 3000 (Plan A) or 6000 (Plan B)
+--   credits_allotted         = 200 (Plan A) or 400 (Plan B)
 --   ai_subscription_status   = 'active'
 --   ai_subscription_expiry   = <today + 7 days for Plan A, +30 days for Plan B>
 
@@ -34,7 +34,7 @@ alter table public.sj_user_entitlements
 -- 2) Notes on existing columns (no changes required)
 -- ----------------------------------------------------------------------------
 -- credits_allotted (integer, default 60) — total AI credits available.
---   When you manually activate a plan, set this to 3000 or 6000.
+--   When activating a plan manually, set this to 200 or 400.
 --   The default 60 is the temporary free starter grant.
 -- credits_used (integer, default 0) — cumulative AI credits consumed.
 --   Remaining AI credits = credits_allotted - credits_used.

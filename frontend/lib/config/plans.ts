@@ -59,7 +59,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     description: "Best value for power users recording daily."
   }
 ];
-
 /* -------------------------------------------------------------------------- */
 /* 2. AI Writing Assist Plans (credits for Simplify/Improve/Explain/Search/Ask) */
 /* -------------------------------------------------------------------------- */
@@ -85,7 +84,7 @@ export type AiSubscriptionPlan = {
  * `ai_subscription_status` / `ai_subscription_expiry` columns.
  *
  * Manual activation (via Supabase table editor) sets:
- *   credits_allotted         = plan.credits (3000 or 6000)
+ *   credits_allotted         = plan.credits (200 or 400)
  *   ai_subscription_status   = 'active'
  *   ai_subscription_expiry   = today + plan.validityDays
  */
@@ -94,32 +93,19 @@ export const AI_SUBSCRIPTION_PLANS: AiSubscriptionPlan[] = [
     id: "ai_plan_a",
     name: "AI Plan A",
     priceGhs: 50,
-    credits: 3000,
+    credits: 200,
     validityDays: 7,
     validityLabel: "1 week",
-    description: "3,000 AI credits — enough for a busy week of writing assists."
+    description: "200 AI credits — enough for a busy week of writing assists."
   },
   {
     id: "ai_plan_b",
     name: "AI Plan B",
     priceGhs: 100,
-    credits: 6000,
+    credits: 400,
     validityDays: 30,
     validityLabel: "1 month",
-    description: "6,000 AI credits — best value for heavy daily use."
+    description: "400 AI credits — best value for heavy daily use."
   }
 ];
 
-/**
- * Developer payment contact details. Shown to users in the manual payment flow.
- */
-export const PAYMENT_CONTACT = {
-  /** Mobile-money network the MoMo number is registered on. */
-  momoNetwork: "MTN",
-  /** MoMo number payments are sent to. */
-  momoNumber: "0257711831",
-  /** Registered name for the MoMo account. */
-  registeredName: "Dopaak Yumpini Zephaniah",
-  /** WhatsApp number screenshots are sent to. */
-  whatsappNumber: "0257711831"
-} as const;

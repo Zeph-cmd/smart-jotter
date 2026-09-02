@@ -81,7 +81,7 @@ export function NotesPage() {
         setDisplayedNotes(results);
         setIsSearchActive(true);
       } catch (caughtError) {
-        // 402 = out of credits → surface the subscription/MoMo prompt.
+        // 402 = out of credits -> surface the subscription prompt.
         if (caughtError instanceof ApiRequestError && caughtError.status === 402) {
           setShowSubscription(true);
           setSearchError(null);
@@ -218,7 +218,7 @@ export function NotesPage() {
       setAnswer(result.answer);
       setAnswerSources(result.notes);
     } catch (caughtError) {
-      // 402 = out of credits → surface the subscription/MoMo prompt.
+      // 402 = out of credits -> surface the subscription prompt.
       if (caughtError instanceof ApiRequestError && caughtError.status === 402) {
         setShowSubscription(true);
         setAskError(null);

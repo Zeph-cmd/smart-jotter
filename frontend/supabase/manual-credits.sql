@@ -18,10 +18,10 @@ do update
       updated_at = timezone('utc', now());
 
 -- ---------------------------------------------------------------------------
--- FUTURE: MANUAL ACTIVATION AFTER PAYMENT (WhatsApp/MoMo)
+-- FUTURE: MANUAL ACTIVATION AFTER PAYMENT (if needed for support)
 -- ---------------------------------------------------------------------------
 -- Once real subscriptions launch, new signups should NOT automatically receive
--- credits. Instead, after confirming a MoMo payment via WhatsApp, run:
+-- credits. Instead, after confirming a payment, run:
 --
 --   insert into public.sj_user_entitlements (user_id, credits_allotted)
 --   values ('<user-uuid>', <plan-credits>)

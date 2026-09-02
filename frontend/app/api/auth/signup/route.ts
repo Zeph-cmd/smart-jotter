@@ -150,7 +150,7 @@ export async function POST(request: Request) {
   //
   // !!! TEMPORARY — MANUAL TESTING / EARLY ACCESS ONLY !!!
   // Once real subscriptions launch, credit allotment should come from MANUAL
-  // activation after payment confirmation (via WhatsApp/MoMo), NOT automatic
+  // activation after a verified Paystack payment, NOT automatic signup
   // signup. At that point, either remove this block or change STARTER_CREDITS
   // back to 0 and gate credits behind the activation flow.
   // ---------------------------------------------------------------------------
