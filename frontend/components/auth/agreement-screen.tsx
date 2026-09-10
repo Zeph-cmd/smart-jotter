@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
 
 /**
@@ -80,7 +81,23 @@ export function AgreementScreen() {
             onChange={(event) => setIsChecked(event.target.checked)}
             className="mt-0.5 h-4 w-4 rounded border-line text-accent focus:ring-accent"
           />
-          <span>I have read and agree to these terms.</span>
+          <span>
+            I have read and agree to the{" "}
+            <Link
+              href="/terms"
+              className="underline transition hover:text-ink dark:hover:text-white"
+            >
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/privacy"
+              className="underline transition hover:text-ink dark:hover:text-white"
+            >
+              Privacy Policy
+            </Link>
+            .
+          </span>
         </label>
 
         {error ? (

@@ -1,13 +1,33 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { headers } from "next/headers";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/server/errors";
 
 export async function requireAuthenticatedClient() {
   const supabase = await createServerSupabaseClient();
-  const {
+
+  // Try getUser normally (looks at cookies/headers configured in server client)
+  let {
     data: { user },
     error
   } = await supabase.auth.getUser();
+
+  // FALLBACK: If cookie-based auth failed, try parsing the Bearer token directly
+  // from the Authorization header (standard for Android/Retrofit).
+  if (error || !user) {
+    const headerList = await headers();
+    const authHeader = headerList.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      const { data: fallback, error: fallbackError } = await supabase.auth.getUser(token);
+      if (fallback?.user) {
+        user = fallback.user;
+        error = null;
+      } else {
+        error = fallbackError;
+      }
+    }
+  }
 
   if (error) {
     throw new ApiError("Authentication failed. Please sign in again.", 401);

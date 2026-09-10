@@ -5,6 +5,7 @@ import {
   requireUserId
 } from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
+import { enforceCredits, recordAiUsage } from "@/lib/ai/credits";
 import { generateFlashcardsForNote } from "@/lib/learning/flashcards";
 
 export async function POST(request: Request) {
@@ -24,11 +25,13 @@ export async function POST(request: Request) {
     const { supabase, user } = await requireAuthenticatedClient();
     const userId = requireUserId(user);
     await requireTermsAccepted(supabase, userId);
+    const cost = await enforceCredits(supabase, userId, "flashcards");
     const flashcards = await generateFlashcardsForNote(
       supabase,
       userId,
       noteId
     );
+    await recordAiUsage(supabase, userId, "flashcards", cost);
     return NextResponse.json({ flashcards });
   } catch (error) {
     return handleRouteError(

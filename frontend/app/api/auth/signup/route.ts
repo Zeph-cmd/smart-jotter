@@ -6,6 +6,7 @@ import {
   getClientIp,
   RATE_LIMITS
 } from "@/lib/server/rate-limit";
+import { ensureAiStarterCredits } from "@/lib/ai/credits";
 
 // RFC 5322 simplified email pattern — good enough for input validation before
 // handing off to Supabase. Supabase does its own validation too.
@@ -154,21 +155,20 @@ export async function POST(request: Request) {
   // signup. At that point, either remove this block or change STARTER_CREDITS
   // back to 0 and gate credits behind the activation flow.
   // ---------------------------------------------------------------------------
-  const STARTER_CREDITS = 60;
-
   if (data.user?.id) {
     try {
-      await adminClient
-        .from("sj_user_entitlements")
-        .upsert(
-          { user_id: data.user.id, credits_allotted: STARTER_CREDITS },
-          { onConflict: "user_id" }
-        );
+      await ensureAiStarterCredits(adminClient, data.user.id);
     } catch (entitlementError) {
-      // Non-fatal: the user can still log in; credits can be added manually.
       console.error(
         "[signup] Failed to set starter credits:",
         entitlementError
+      );
+      return NextResponse.json(
+        {
+          error:
+            "Account created, but starter credits could not be initialized. Please try logging in again."
+        },
+        { status: 503 }
       );
     }
   }

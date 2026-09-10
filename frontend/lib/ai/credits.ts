@@ -26,26 +26,73 @@ export type AiCredits = {
   ai_subscription_expiry: string | null;
 };
 
+export const FREE_STARTER_CREDITS = 60;
+
 type EntitlementsCreditRow = {
   credits_allotted: number | null;
   credits_used: number | null;
   ai_subscription_status: "none" | "active" | "expired" | null;
   ai_subscription_expiry: string | null;
+  subscription_status: "none" | "active" | "expired" | null;
 };
 
+export async function ensureAiStarterCredits(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("sj_user_entitlements")
+    .select(
+      "credits_allotted, credits_used, ai_subscription_status, subscription_status"
+    )
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not check AI starter credits: ${error.message}`);
+  }
+
+  const row = data as {
+    credits_allotted: number | null;
+    credits_used: number | null;
+    ai_subscription_status: "none" | "active" | "expired" | null;
+    subscription_status: "none" | "active" | "expired" | null;
+  } | null;
+  const shouldGrant =
+    !row ||
+    (row.credits_allotted === 0 &&
+      (row.credits_used ?? 0) === 0 &&
+      (row.ai_subscription_status ?? "none") === "none" &&
+      (row.subscription_status ?? "none") === "none");
+
+  if (!shouldGrant) {
+    return;
+  }
+
+  const { error: upsertError } = await supabase
+    .from("sj_user_entitlements")
+    .upsert(
+      { user_id: userId, credits_allotted: FREE_STARTER_CREDITS },
+      { onConflict: "user_id" }
+    );
+
+  if (upsertError) {
+    throw new Error(`Could not grant AI starter credits: ${upsertError.message}`);
+  }
+}
+
 /**
- * Reads the user's credit balance, defaulting to 0 for first-time users
- * (the entitlements row may not exist yet).
+ * Reads the user's credit balance and repairs an uninitialized free account.
  */
 export async function getAiCredits(
   supabase: SupabaseClient,
   userId: string
 ): Promise<AiCredits> {
+  await ensureAiStarterCredits(supabase, userId);
+
   const { data, error } = await supabase
     .from("sj_user_entitlements")
-    .select(
-      "credits_allotted, credits_used, ai_subscription_status, ai_subscription_expiry"
-    )
+    .select("credits_allotted, credits_used, ai_subscription_status, ai_subscription_expiry, subscription_status")
     .eq("user_id", userId)
     .maybeSingle();
 
