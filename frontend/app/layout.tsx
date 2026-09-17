@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { MobileAuthRedirect } from "@/components/auth/mobile-auth-redirect";
 import { PlansBanner } from "@/components/ui/plans-banner";
 import { SiteFooter } from "@/components/ui/site-footer";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <ThemeToggle />
               </div>
             </header>
+            <MobileAuthRedirect />
             <PlansBanner />
             {children}
             <SiteFooter />
