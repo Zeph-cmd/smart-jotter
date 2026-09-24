@@ -9,8 +9,27 @@ import { AuthProvider } from "@/lib/auth/auth-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://smartjotter.com"),
   title: "Smart Jotter",
-  description: "A minimal note-taking app built to grow into an AI-first knowledge system."
+  description:
+    "A minimal note-taking app built to grow into an AI-first knowledge system.",
+  openGraph: {
+    title: "Smart Jotter",
+    description:
+      "A minimal note-taking app built to grow into an AI-first knowledge system.",
+    url: "https://smartjotter.com",
+    siteName: "Smart Jotter",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "/smart-jotter-logo.png",
+        width: 1200,
+        height: 630,
+        alt: "Smart Jotter — AI-powered note-taking app"
+      }
+    ]
+  }
 };
 
 type RootLayoutProps = {

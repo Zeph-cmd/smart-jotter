@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { PageParagraph, PageShell } from "@/components/ui/page-shell";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "FAQ · Smart Jotter",
   description:
-    "Answers to common questions about Smart Jotter: accounts, notes, AI features, payments, and privacy."
-};
+    "Answers to common questions about Smart Jotter: accounts, notes, AI features, payments, and privacy.",
+  path: "/faq"
+});
 
 type FAQItem = {
   question: string;

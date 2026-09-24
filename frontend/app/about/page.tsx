@@ -5,12 +5,14 @@ import {
   PageSectionHeading,
   PageShell
 } from "@/components/ui/page-shell";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "About · Smart Jotter",
   description:
-    "Smart Jotter is a minimal note-taking app built to grow into an AI-first knowledge system for students, professionals, and lifelong learners."
-};
+    "Smart Jotter is a minimal note-taking app built to grow into an AI-first knowledge system for students, professionals, and lifelong learners.",
+  path: "/about"
+});
 
 export default function AboutPage() {
   return (

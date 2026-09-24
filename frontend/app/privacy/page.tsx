@@ -5,12 +5,14 @@ import {
   PageSectionHeading,
   PageShell
 } from "@/components/ui/page-shell";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "Privacy Policy · Smart Jotter",
   description:
-    "How Smart Jotter collects, uses, and protects your personal information."
-};
+    "How Smart Jotter collects, uses, and protects your personal information, including how AI features handle your notes.",
+  path: "/privacy"
+});
 
 export default function PrivacyPage() {
   return (

@@ -5,12 +5,14 @@ import {
   PageSectionHeading,
   PageShell
 } from "@/components/ui/page-shell";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "Terms of Service · Smart Jotter",
   description:
-    "The terms and conditions that govern your use of Smart Jotter."
-};
+    "Read the terms and conditions that govern your use of the Smart Jotter note-taking service and its AI features.",
+  path: "/terms"
+});
 
 export default function TermsPage() {
   return (

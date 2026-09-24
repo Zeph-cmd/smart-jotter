@@ -5,12 +5,14 @@ import {
   PageSectionHeading,
   PageShell
 } from "@/components/ui/page-shell";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "Features · Smart Jotter",
   description:
-    "See exactly what Smart Jotter can do — when to use each feature, real situations where it helps, and why it matters."
-};
+    "Semantic search, AI explanations, flashcards, speech-to-text and more — what each Smart Jotter feature does and when to use it.",
+  path: "/features"
+});
 
 export default function FeaturesPage() {
   return (
