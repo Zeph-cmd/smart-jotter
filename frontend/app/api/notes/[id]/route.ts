@@ -5,7 +5,7 @@ import {
   requireUserId
 } from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
-import { deleteNote, getNoteById, updateNote } from "@/lib/notes-service";
+import { getNoteById, updateNote, deleteNote } from "@/lib/notes-service";
 
 type RouteContext = {
   params: Promise<{
@@ -71,9 +71,9 @@ export async function DELETE(_request: Request, context: RouteContext) {
     const userId = requireUserId(user);
     await requireTermsAccepted(supabase, userId);
     await deleteNote(supabase, userId, id);
-    return NextResponse.json({ success: true });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
-    return handleRouteError("api-note-delete", error, "Could not delete that note.", {
+    return handleRouteError("api-note-delete", error, "Could not delete your note.", {
       noteId: id
     });
   }

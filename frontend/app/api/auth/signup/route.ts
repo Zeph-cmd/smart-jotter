@@ -100,6 +100,8 @@ export async function POST(request: Request) {
       getSupabaseUrl(),
       getSupabaseServiceRoleKey(),
       {
+        // Smart Jotter tables live in the "jotter" schema of the shared project.
+        db: { schema: "jotter" },
         auth: {
           autoRefreshToken: false,
           persistSession: false

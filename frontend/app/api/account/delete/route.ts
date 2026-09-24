@@ -98,6 +98,8 @@ export async function POST(request: Request) {
   let adminClient;
   try {
     adminClient = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
+      // Smart Jotter tables live in the "jotter" schema of the shared project.
+      db: { schema: "jotter" },
       auth: { autoRefreshToken: false, persistSession: false }
     });
   } catch (error) {
