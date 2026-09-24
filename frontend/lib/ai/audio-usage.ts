@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { ApiError } from "@/lib/server/errors";
 
 /**
@@ -26,7 +26,7 @@ function getMonthKey(date: Date = new Date()): string {
  * calendar month (UTC).
  */
 export async function getMonthlyAudioUsage(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<number> {
   const monthKey = getMonthKey();
@@ -50,7 +50,7 @@ export async function getMonthlyAudioUsage(
  * Throws an ApiError (402) if the monthly limit would be exceeded.
  */
 export async function enforceAudioQuota(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   requestedSeconds: number
 ): Promise<void> {
@@ -70,7 +70,7 @@ export async function enforceAudioQuota(
  * Uses an upsert so the row is created on first use.
  */
 export async function incrementAudioUsage(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   seconds: number
 ): Promise<void> {
@@ -88,7 +88,7 @@ export async function incrementAudioUsage(
  * Returns a summary of the user's quota for display in the UI.
  */
 export async function getAudioQuotaSummary(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ) {
   const used = await getMonthlyAudioUsage(supabase, userId);

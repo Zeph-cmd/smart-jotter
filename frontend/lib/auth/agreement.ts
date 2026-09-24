@@ -16,7 +16,7 @@
  * modal to keep popping up because the DB never actually recorded agreed = true.
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 
 export type TermsAgreementStatus = {
   agreed: boolean;
@@ -40,7 +40,7 @@ type AcceptTermsResponse = {
  * does not exist yet (first-time user) so they are prompted to accept.
  */
 export async function getTermsAgreement(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<TermsAgreementStatus> {
   try {
@@ -81,7 +81,7 @@ export async function getTermsAgreement(
  * Throws an Error if the write could not be persisted or verified.
  */
 export async function setTermsAgreed(
-  _supabase: SupabaseClient,
+  _supabase: AppSupabaseClient,
   _userId: string
 ): Promise<void> {
   const response = await fetch("/api/auth/accept-terms", {

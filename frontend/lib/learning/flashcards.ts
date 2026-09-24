@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { openAIRequest } from "@/lib/ai/openai";
 import { getNoteById } from "@/lib/notes-service";
 import type {
@@ -31,7 +31,7 @@ type NormalizedFlashcardDraft = {
 };
 
 export async function getFlashcardsByNoteId(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   noteId: string
 ): Promise<Flashcard[]> {
@@ -50,7 +50,7 @@ export async function getFlashcardsByNoteId(
 }
 
 export async function generateFlashcardsForNote(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   noteId: string
 ): Promise<Flashcard[]> {
@@ -102,7 +102,7 @@ export async function generateFlashcardsForNote(
 }
 
 export async function getDueFlashcards(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<Flashcard[]> {
   const { data, error } = await supabase
@@ -121,7 +121,7 @@ export async function getDueFlashcards(
 }
 
 export async function reviewFlashcard(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   input: {
     flashcardId: string;
@@ -146,7 +146,7 @@ export async function reviewFlashcard(
 }
 
 export async function buildQuizForNote(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   noteId: string
 ): Promise<{

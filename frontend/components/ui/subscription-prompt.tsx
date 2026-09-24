@@ -4,9 +4,12 @@ import { useEffect } from "react";
 import {
   AI_SUBSCRIPTION_PLANS,
   SUBSCRIPTION_PLANS,
+  formatPlanPrice,
   type AiSubscriptionPlan,
+  type PricingCurrency,
   type SubscriptionPlan
 } from "@/lib/config/plans";
+import { usePricingCurrency } from "@/lib/pricing/use-currency";
 
 type SubscriptionPromptProps = {
   /** Whether the modal/prompt is visible. */
@@ -37,6 +40,7 @@ export function SubscriptionPrompt({
   variant = "speech"
 }: SubscriptionPromptProps) {
   const isAi = variant === "ai";
+  const currency: PricingCurrency = usePricingCurrency();
 
   const heading =
     title ??
@@ -126,10 +130,10 @@ export function SubscriptionPrompt({
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           {isAi
             ? AI_SUBSCRIPTION_PLANS.map((plan) => (
-                <AiPlanCard key={plan.id} plan={plan} />
+                <AiPlanCard key={plan.id} plan={plan} currency={currency} />
               ))
             : SUBSCRIPTION_PLANS.map((plan) => (
-                <SpeechPlanCard key={plan.id} plan={plan} />
+                <SpeechPlanCard key={plan.id} plan={plan} currency={currency} />
               ))}
         </div>
 
@@ -145,7 +149,13 @@ export function SubscriptionPrompt({
   );
 }
 
-function SpeechPlanCard({ plan }: { plan: SubscriptionPlan }) {
+function SpeechPlanCard({
+  plan,
+  currency
+}: {
+  plan: SubscriptionPlan;
+  currency: PricingCurrency;
+}) {
   return (
     <div className="rounded-2xl border border-line bg-slate-50 p-5 dark:bg-slate-950">
       <div className="flex items-baseline justify-between">
@@ -153,7 +163,7 @@ function SpeechPlanCard({ plan }: { plan: SubscriptionPlan }) {
           {plan.name}
         </h3>
         <span className="text-2xl font-bold text-accent">
-          {plan.priceGhs} GHS
+          {formatPlanPrice(plan, currency)}
         </span>
       </div>
       <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
@@ -173,7 +183,13 @@ function SpeechPlanCard({ plan }: { plan: SubscriptionPlan }) {
   );
 }
 
-function AiPlanCard({ plan }: { plan: AiSubscriptionPlan }) {
+function AiPlanCard({
+  plan,
+  currency
+}: {
+  plan: AiSubscriptionPlan;
+  currency: PricingCurrency;
+}) {
   return (
     <div className="rounded-2xl border border-line bg-slate-50 p-5 dark:bg-slate-950">
       <div className="flex items-baseline justify-between">
@@ -181,7 +197,7 @@ function AiPlanCard({ plan }: { plan: AiSubscriptionPlan }) {
           {plan.name}
         </h3>
         <span className="text-2xl font-bold text-accent">
-          {plan.priceGhs} GHS
+          {formatPlanPrice(plan, currency)}
         </span>
       </div>
       <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">

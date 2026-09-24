@@ -54,6 +54,9 @@ type PaystackVerificationData = {
  */
 export function createServiceRoleSupabaseClient() {
   return createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
+    // Smart Jotter tables live in the dedicated "jotter" schema of the shared
+    // Supabase project (see lib/supabase/browser.ts).
+    db: { schema: "jotter" },
     auth: { autoRefreshToken: false, persistSession: false }
   });
 }
@@ -147,21 +150,24 @@ export async function verifyPaystackTransaction(reference: string): Promise<Pays
 /* Plan validation (amount + metadata sanity check)                           */
 /* -------------------------------------------------------------------------- */
 
-/** Returns the expected price (in major currency units, e.g. GHS) for a plan. */
-function getPlanPriceGhs(planType: "stt" | "ai", planId: PlanId | AiPlanId): number {
+/** Returns the expected prices (in major currency units) for a plan. */
+function getPlanPrices(
+  planType: "stt" | "ai",
+  planId: PlanId | AiPlanId
+): { priceGhs: number; priceUsd: number } {
   if (planType === "stt") {
     const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
     if (!plan) {
       throw new Error(`Unknown Speech-to-Text plan: ${planId}`);
     }
-    return plan.priceGhs;
+    return { priceGhs: plan.priceGhs, priceUsd: plan.priceUsd };
   }
 
   const plan = AI_SUBSCRIPTION_PLANS.find((p) => p.id === planId);
   if (!plan) {
     throw new Error(`Unknown AI Writing Assist plan: ${planId}`);
   }
-  return plan.priceGhs;
+  return { priceGhs: plan.priceGhs, priceUsd: plan.priceUsd };
 }
 
 /**
@@ -205,25 +211,30 @@ export function extractMetadata(raw: unknown): PaystackMetadata {
 }
 
 /**
- * Confirms the verified transaction's amount matches the expected plan price.
- * Paystack amounts are in the smallest currency unit (kobo/cent), so 50 GHS
- * is returned as 5000.
+ * Confirms the verified transaction's amount matches the expected plan price
+ * for its currency. African visitors are charged in GHS; visitors outside
+ * Africa are charged in USD at the fixed rate in lib/config/plans.ts.
+ * Paystack amounts are in the smallest currency unit (pesewas/cents), so
+ * 50 GHS is returned as 5000 and 20 USD as 2000.
  */
 export function assertAmountMatches(
   data: PaystackVerificationData,
   metadata: PaystackMetadata
 ) {
-  const expectedGhs = getPlanPriceGhs(metadata.plan_type, metadata.plan_id);
-  const expectedMinor = Math.round(expectedGhs * 100);
+  const prices = getPlanPrices(metadata.plan_type, metadata.plan_id);
+  const currency = data.currency.toUpperCase();
+
+  if (currency !== "GHS" && currency !== "USD") {
+    throw new Error(`Currency mismatch: paid in ${currency}, expected GHS or USD.`);
+  }
+
+  const expectedMajor = currency === "USD" ? prices.priceUsd : prices.priceGhs;
+  const expectedMinor = Math.round(expectedMajor * 100);
 
   if (data.amount !== expectedMinor) {
     throw new Error(
-      `Amount mismatch: paid ${data.amount} minor units, expected ${expectedMinor} (${expectedGhs} GHS).`
+      `Amount mismatch: paid ${data.amount} minor units, expected ${expectedMinor} (${expectedMajor} ${currency}).`
     );
-  }
-
-  if (data.currency.toUpperCase() !== "GHS") {
-    throw new Error(`Currency mismatch: paid in ${data.currency}, expected GHS.`);
   }
 }
 

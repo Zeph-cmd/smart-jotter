@@ -1,6 +1,7 @@
-import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 import { headers } from "next/headers";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { ApiError } from "@/lib/server/errors";
 
 export async function requireAuthenticatedClient() {
@@ -60,7 +61,7 @@ export function requireUserId(user: User) {
  * Returns true when agreed; throws an ApiError (403) otherwise.
  */
 export async function requireTermsAccepted(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<true> {
   const { data, error } = await supabase

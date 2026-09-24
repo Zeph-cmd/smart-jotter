@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { generateEmbedding } from "@/lib/ai/embeddings";
 import { syncRelatedNotes } from "@/lib/graph/related-notes";
 import { cosineSimilarity } from "@/lib/search/cosine-similarity";
@@ -19,7 +19,7 @@ type ScoredNote = Note & {
 };
 
 export async function getNotes(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<Note[]> {
   const { data, error } = await supabase
@@ -36,7 +36,7 @@ export async function getNotes(
 }
 
 export async function getNoteById(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   id: string
 ): Promise<Note | null> {
@@ -55,7 +55,7 @@ export async function getNoteById(
 }
 
 export async function createNote(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   input: NoteInput
 ): Promise<Note> {
@@ -90,7 +90,7 @@ export async function createNote(
 }
 
 export async function updateNote(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   id: string,
   input: NoteInput
@@ -127,7 +127,7 @@ export async function updateNote(
 }
 
 export async function deleteNote(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   id: string
 ): Promise<void> {
@@ -143,7 +143,7 @@ export async function deleteNote(
 }
 
 export async function searchNotesByVector(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   queryEmbedding: number[],
   limit = 6
@@ -168,7 +168,7 @@ export async function searchNotesByVector(
 }
 
 export async function searchNotesManually(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   queryEmbedding: number[],
   limit = 6

@@ -1,10 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { generateEmbedding } from "@/lib/ai/embeddings";
 import { searchNotesByVector, searchNotesManually } from "@/lib/notes-service";
 import type { Note } from "@/types/note";
 
 export async function semanticSearch(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   query: string,
   limit = 6

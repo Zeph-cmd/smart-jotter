@@ -1,14 +1,18 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/env";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 
-let browserClient: SupabaseClient | null = null;
+let browserClient: AppSupabaseClient | null = null;
 
 export function createBrowserSupabaseClient() {
   if (!browserClient) {
     browserClient = createBrowserClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+      // Smart Jotter tables live in the dedicated "jotter" schema of the
+      // shared Supabase project (the school app uses a different schema).
+      // This routes every PostgREST query via Accept-Profile: jotter.
+      db: { schema: "jotter" },
       auth: {
         // CRITICAL: supabase-js enables autoRefreshToken by default. It runs a
         // background timer (_recoverAndRefresh) that retries /oauth/token on its

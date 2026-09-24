@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { openAIRequest } from "@/lib/ai/openai";
 import { semanticSearch } from "@/lib/search/semantic-search";
 import type { Note } from "@/types/note";
@@ -19,7 +19,7 @@ type AskNotesResult = {
 };
 
 export async function askYourNotes(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   question: string
 ): Promise<AskNotesResult> {

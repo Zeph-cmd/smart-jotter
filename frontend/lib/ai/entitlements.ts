@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { ApiError } from "@/lib/server/errors";
 
 /**
@@ -53,7 +53,7 @@ type EntitlementsRow = {
  * row doesn't exist yet (first-time user).
  */
 export async function getEntitlements(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<UserEntitlements> {
   const { data, error } = await supabase
@@ -84,7 +84,7 @@ export async function getEntitlements(
  * subscription is still valid and which cap applies.
  */
 export async function getAudioAccess(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<AudioAccess> {
   const entitlements = await getEntitlements(supabase, userId);
@@ -142,7 +142,7 @@ export function evaluateAccess(entitlements: UserEntitlements): AudioAccess {
  * Throws an ApiError (402) if the limit would be exceeded.
  */
 export async function enforceAudioQuota(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   requestedSeconds: number
 ): Promise<AudioAccess> {
@@ -167,7 +167,7 @@ export async function enforceAudioQuota(
  * correct counter based on the current active tier.
  */
 export async function recordAudioUsage(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   seconds: number,
   access: AudioAccess
@@ -201,7 +201,7 @@ export async function recordAudioUsage(
  * Returns a summary of the user's quota for display in the UI.
  */
 export async function getAudioQuotaSummary(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ) {
   const access = await getAudioAccess(supabase, userId);

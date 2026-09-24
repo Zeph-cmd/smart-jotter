@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 import {
   AI_SUBSCRIPTION_PLANS,
-  SUBSCRIPTION_PLANS
+  SUBSCRIPTION_PLANS,
+  formatPlanPrice,
+  getPlanPrice,
+  type PricingCurrency
 } from "@/lib/config/plans";
+import { usePricingCurrency } from "@/lib/pricing/use-currency";
 import { useAuth } from "@/lib/auth/auth-context";
 import { payWithPaystack } from "@/lib/paystack/client";
 import type { PaystackMetadata } from "@/lib/paystack/types";
@@ -38,6 +42,7 @@ declare global {
  */
 export function PlansBanner() {
   const [isExpanded, setIsExpanded] = useState(false);
+  const currency = usePricingCurrency();
 
   return (
     <div className="border-b border-emerald-600/40 bg-emerald-600 text-white">
@@ -81,6 +86,8 @@ export function PlansBanner() {
                     planId={plan.id}
                     name={plan.name}
                     priceGhs={plan.priceGhs}
+                    priceUsd={plan.priceUsd}
+                    currency={currency}
                     description={plan.description}
                     features={[
                       `${plan.durationLabel} of recording`,
@@ -114,6 +121,8 @@ export function PlansBanner() {
                     planId={plan.id}
                     name={plan.name}
                     priceGhs={plan.priceGhs}
+                    priceUsd={plan.priceUsd}
+                    currency={currency}
                     description={plan.description}
                     features={[
                       `${plan.credits.toLocaleString()} AI credits`,
@@ -139,6 +148,8 @@ type PlanCardProps = {
   planId: string;
   name: string;
   priceGhs: number;
+  priceUsd: number;
+  currency: PricingCurrency;
   description: string;
   features: string[];
 };
@@ -148,12 +159,21 @@ function PlanCard({
   planId,
   name,
   priceGhs,
+  priceUsd,
+  currency,
   description,
   features
 }: PlanCardProps) {
   const { user } = useAuth();
   const [status, setStatus] = useState<PaymentStatus>({ state: "idle" });
   const [supportsApplePay, setSupportsApplePay] = useState(false);
+
+  // Geo-based pricing: African visitors pay GHS, everyone else pays the fixed
+  // USD equivalent. The same value is shown and charged; the server verifies
+  // the amount/currency pair in assertAmountMatches (lib/paystack/server.ts).
+  const planPrice = { priceGhs, priceUsd };
+  const price = getPlanPrice(planPrice, currency);
+  const display = formatPlanPrice(planPrice, currency);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -188,7 +208,8 @@ function PlanCard({
       // 1. Open the Paystack popup.
       const { reference } = await payWithPaystack({
         email: user.email ?? "",
-        amountGhs: priceGhs,
+        amount: price,
+        currency,
         metadata
       });
 
@@ -224,7 +245,7 @@ function PlanCard({
     <div className="flex flex-col rounded-2xl border border-emerald-400/50 bg-white/10 p-5 backdrop-blur-sm">
       <div className="flex items-baseline justify-between">
         <h3 className="text-lg font-semibold">{name}</h3>
-        <span className="text-2xl font-bold">{priceGhs} GHS</span>
+        <span className="text-2xl font-bold">{display}</span>
       </div>
       <p className="mt-2 text-sm text-emerald-50">{description}</p>
       <ul className="mt-3 space-y-1.5 text-sm text-emerald-50">
@@ -271,7 +292,8 @@ function PlanCard({
 
               const { reference } = await payWithPaystack({
                 email: user.email ?? "",
-                amountGhs: priceGhs,
+                amount: price,
+                currency,
                 metadata
               });
 
@@ -314,7 +336,7 @@ function PlanCard({
           <span aria-hidden="true" className="text-lg leading-none">
             
           </span>
-          {status.state === "paying" ? "Processing…" : `Pay ${priceGhs} GHS with Apple Pay`}
+          {status.state === "paying" ? "Processing…" : `Pay ${display} with Apple Pay`}
         </button>
       ) : null}
 
@@ -349,7 +371,8 @@ function PlanCard({
 
             const { reference } = await payWithPaystack({
               email: user.email ?? "",
-              amountGhs: priceGhs,
+              amount: price,
+              currency,
               metadata
             });
 
@@ -395,7 +418,7 @@ function PlanCard({
         {status.state === "paying"
           ? "Processing…"
           : supportsApplePay
-            ? `Pay ${priceGhs} GHS with Apple Pay`
+            ? `Pay ${display} with Apple Pay`
             : `Apple Pay unavailable on this browser`}
       </button>
 
@@ -412,7 +435,7 @@ function PlanCard({
         disabled={status.state === "paying"}
         className="mt-3 w-full rounded-lg bg-white px-4 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {status.state === "paying" ? "Processing…" : `Pay ${priceGhs} GHS with Paystack`}
+        {status.state === "paying" ? "Processing…" : `Pay ${display} with Paystack`}
       </button>
 
     </div>

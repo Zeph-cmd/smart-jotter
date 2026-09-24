@@ -46,9 +46,10 @@ declare global {
 
 export type PayWithPaystackArgs = {
   email: string;
-  /** Amount in MAJOR units (e.g. 50 for 50 GHS). Converted to kobo internally. */
-  amountGhs: number;
-  currency?: string;
+  /** Amount in MAJOR units (e.g. 50 for 50 GHS). Converted to subunits internally. */
+  amount: number;
+  /** Charge currency. GHS for African visitors, USD elsewhere. */
+  currency: "GHS" | "USD";
   metadata: PaystackMetadata;
 };
 
@@ -249,8 +250,8 @@ export async function payWithPaystack(args: PayWithPaystackArgs): Promise<Paysta
       const handler = window.PaystackPop!.setup({
         key: publicKey,
         email: args.email,
-        amount: Math.round(args.amountGhs * 100), // convert GHS -> kobo
-        currency: args.currency ?? "GHS",
+        amount: Math.round(args.amount * 100), // major -> minor units (pesewas/cents)
+        currency: args.currency,
         ref: reference,
         metadata: args.metadata,
         callback(response) {

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { cosineSimilarity } from "@/lib/search/cosine-similarity";
 import { parseStoredEmbedding, toPgVector } from "@/lib/search/vector";
 import type { NoteWithEmbedding, RelatedNote } from "@/types/note";
@@ -12,7 +12,7 @@ type MatchNotesRow = {
 };
 
 export async function syncRelatedNotes(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   noteId: string,
   noteEmbedding: number[] | null,
@@ -53,7 +53,7 @@ export async function syncRelatedNotes(
 }
 
 export async function getRelatedNotes(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   noteId: string
 ): Promise<RelatedNote[]> {
@@ -100,7 +100,7 @@ export async function getRelatedNotes(
 }
 
 async function findRelatedNoteIds(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   noteId: string,
   noteEmbedding: number[],
@@ -120,7 +120,7 @@ async function findRelatedNoteIds(
 }
 
 async function findRelatedNoteIdsWithVector(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   noteId: string,
   noteEmbedding: number[],
@@ -143,7 +143,7 @@ async function findRelatedNoteIdsWithVector(
 }
 
 async function findRelatedNoteIdsManually(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   noteId: string,
   noteEmbedding: number[],

@@ -8,6 +8,9 @@ export async function createServerSupabaseClient() {
   const authHeader = headerList.get("Authorization");
 
   return createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+    // Smart Jotter tables live in the dedicated "jotter" schema of the shared
+    // Supabase project (see lib/supabase/browser.ts).
+    db: { schema: "jotter" },
     global: {
       headers: authHeader ? { Authorization: authHeader } : undefined,
     },

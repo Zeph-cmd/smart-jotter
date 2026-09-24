@@ -12,7 +12,7 @@
  * routes call enforceCredits() before each AI call and recordAiUsage() after.
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { ApiError } from "@/lib/server/errors";
 import { getFeatureCost, type AiFeature } from "@/lib/credits";
 
@@ -37,7 +37,7 @@ type EntitlementsCreditRow = {
 };
 
 export async function ensureAiStarterCredits(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<void> {
   const { data, error } = await supabase
@@ -85,7 +85,7 @@ export async function ensureAiStarterCredits(
  * Reads the user's credit balance and repairs an uninitialized free account.
  */
 export async function getAiCredits(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<AiCredits> {
   await ensureAiStarterCredits(supabase, userId);
@@ -152,7 +152,7 @@ export function isAiSubscriptionActive(credits: AiCredits): boolean {
  *          recordAiUsage to avoid a second lookup).
  */
 export async function enforceCredits(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   feature: AiFeature
 ): Promise<number> {
@@ -193,7 +193,7 @@ export async function enforceCredits(
  * failure here is logged but does not undo the user's result.
  */
 export async function recordAiUsage(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   feature: AiFeature,
   cost: number
@@ -258,7 +258,7 @@ export type FeatureUsageRow = {
 };
 
 export async function getUsageByFeature(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<FeatureUsageRow[]> {
   const { data, error } = await supabase

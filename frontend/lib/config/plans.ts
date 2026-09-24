@@ -22,6 +22,8 @@ export type SubscriptionPlan = {
   id: PlanId;
   name: string;
   priceGhs: number;
+  /** USD equivalent charged to users outside Africa (fixed rate). */
+  priceUsd: number;
   /** Duration the plan grants, in seconds. */
   durationSeconds: number;
   /** Human-readable duration (e.g. "4 hours"). */
@@ -42,6 +44,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: "plan_a",
     name: "Plan A",
     priceGhs: 50,
+    priceUsd: 20,
     durationSeconds: 4 * 60 * 60, // 4 hours
     durationLabel: "4 hours",
     validityDays: 7,
@@ -52,6 +55,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: "plan_b",
     name: "Plan B",
     priceGhs: 100,
+    priceUsd: 40,
     durationSeconds: 8 * 60 * 60, // 8 hours
     durationLabel: "8 hours",
     validityDays: 30,
@@ -69,6 +73,8 @@ export type AiSubscriptionPlan = {
   id: AiPlanId;
   name: string;
   priceGhs: number;
+  /** USD equivalent charged to users outside Africa (fixed rate). */
+  priceUsd: number;
   /** Total AI credits this plan grants. */
   credits: number;
   /** Validity window of the plan, in days. */
@@ -93,6 +99,7 @@ export const AI_SUBSCRIPTION_PLANS: AiSubscriptionPlan[] = [
     id: "ai_plan_a",
     name: "AI Plan A",
     priceGhs: 50,
+    priceUsd: 20,
     credits: 200,
     validityDays: 7,
     validityLabel: "1 week",
@@ -102,10 +109,38 @@ export const AI_SUBSCRIPTION_PLANS: AiSubscriptionPlan[] = [
     id: "ai_plan_b",
     name: "AI Plan B",
     priceGhs: 100,
+    priceUsd: 40,
     credits: 400,
     validityDays: 30,
     validityLabel: "1 month",
     description: "400 AI credits — best value for heavy daily use."
   }
 ];
+
+/* -------------------------------------------------------------------------- */
+/* Geo-based pricing helpers                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Currency shown to / charged from the current visitor.
+ *  - "GHS": visitors in Africa (primary market, Paystack Ghana).
+ *  - "USD": visitors anywhere else (fixed rate — no live FX).
+ */
+export type PricingCurrency = "GHS" | "USD";
+
+/** Returns the price (in major units) for a plan in the given currency. */
+export function getPlanPrice(
+  plan: { priceGhs: number; priceUsd: number },
+  currency: PricingCurrency
+): number {
+  return currency === "USD" ? plan.priceUsd : plan.priceGhs;
+}
+
+/** Formats a plan price for display, e.g. "50 GHS" or "$20 USD". */
+export function formatPlanPrice(
+  plan: { priceGhs: number; priceUsd: number },
+  currency: PricingCurrency
+): string {
+  return currency === "USD" ? `$${plan.priceUsd} USD` : `${plan.priceGhs} GHS`;
+}
 
