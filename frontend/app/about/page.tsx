@@ -14,13 +14,33 @@ export const metadata: Metadata = buildMetadata({
   path: "/about"
 });
 
+/**
+ * JSON-LD structured data (schema.org) for search engines.
+ */
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Smart Jotter",
+  url: "https://smartjotter.com",
+  logo: "https://smartjotter.com/smart-jotter-logo.png",
+  founder: {
+    "@type": "Person",
+    name: "Zephaniah Yumpini"
+  }
+};
+
 export default function AboutPage() {
   return (
-    <PageShell
-      eyebrow="About"
-      title="What is Smart Jotter?"
-      subtitle="A calm place to capture notes with an AI companion that helps you turn them into real understanding."
-    >
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
+      <PageShell
+        eyebrow="About"
+        title="What is Smart Jotter?"
+        subtitle="A calm place to capture notes with an AI companion that helps you turn them into real understanding."
+      >
       <PageSectionHeading>Our mission</PageSectionHeading>
       <PageParagraph>
         Smart Jotter started as a simple, minimal note-taking app. We believe
@@ -104,6 +124,7 @@ export default function AboutPage() {
         </a>
         )
       </PageParagraph>
-    </PageShell>
+      </PageShell>
+    </>
   );
 }
