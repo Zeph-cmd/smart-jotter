@@ -4,6 +4,7 @@
 
 :root {
   color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .dark {
@@ -41,4 +42,15 @@ div {
   box-shadow: none !important;
   text-shadow: none !important;
   filter: none !important;
+}
+
+a,
+button,
+a:focus,
+a:focus-visible,
+button:focus,
+button:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
 }

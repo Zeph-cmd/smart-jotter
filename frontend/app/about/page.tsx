@@ -115,12 +115,12 @@ export default function AboutPage() {
       <PageParagraph>
         &mdash; Zephaniah Yumpini, Founder, Smart Jotter (
         <a
-          href="https://zephobed.me"
+          href="https://smartjotter.com"
           target="_blank"
           rel="noopener noreferrer"
           className="font-medium text-slate-600 underline transition hover:text-ink dark:text-slate-300 dark:hover:text-white"
         >
-          zephobed.me
+          smartjotter.com
         </a>
         )
       </PageParagraph>
