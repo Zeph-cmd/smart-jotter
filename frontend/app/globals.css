@@ -34,3 +34,11 @@ article,
 div {
   @apply transition-colors duration-200;
 }
+
+*,
+*::before,
+*::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}

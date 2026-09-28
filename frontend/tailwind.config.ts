@@ -15,9 +15,7 @@ const config: Config = {
         line: "#dde3e9",
         accent: "#1565c0"
       },
-      boxShadow: {
-        jotter: "0 20px 60px rgba(16, 20, 24, 0.08)"
-      }
+      boxShadow: {}
     }
   },
   plugins: []

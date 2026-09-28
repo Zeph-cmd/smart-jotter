@@ -88,7 +88,7 @@ https://smartjotter.com/reset-password
 ```
 
 (Also keep any staging/preview URLs you use, e.g.
-`https://smart-jotter.vercel.app/reset-password`.)
+`https://smartjotter.com/reset-password`.)
 
 > The intermediate `/reset-password/start` route does **not** need to be in
 > the redirect-URL list — it is never used as a Supabase `redirectTo`; it is
