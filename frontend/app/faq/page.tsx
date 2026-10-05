@@ -28,12 +28,12 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Is Smart Jotter free to use?",
     answer:
-      "Yes. Core note-taking is free forever, and every new account gets 60 free AI starter credits plus 90 minutes of lifetime speech-to-text. When you need more, you can subscribe to an AI Writing Assist plan (for credits) or a Speech-to-Text plan (for recording time)."
+      "Yes. Core note-taking is free forever, and every new account gets 60 free AI starter credits plus 60 minutes of lifetime speech-to-text. When you need more, you can subscribe to an AI Writing Assist plan (for credits) or a Speech-to-Text plan (for recording time)."
   },
   {
     question: "What are AI credits?",
     answer:
-      "AI credits are the units consumed by AI-powered features: Simplify, Improve, Explain, Semantic Search, and Flashcard generation each cost 1 credit per use; Ask Your Notes costs 2. Paid plans give you a fresh bundle of credits — AI Plan A gives 100 credits for 1 week (50 GHS / $20 USD) and AI Plan B gives 200 credits for 1 month (100 GHS / $40 USD). Track everything on the Usage page."
+      "AI credits are the units consumed by AI-powered features: Improve, Explain, Semantic Search, and Flashcard generation each cost 1 credit per use; Ask Your Notes costs 2. Paid plans give you a fresh bundle of credits — AI Plan A gives 100 credits for 1 week (50 GHS / $20 USD) and AI Plan B gives 200 credits for 1 month (100 GHS / $40 USD). Track everything on the Usage page."
   },
   {
     question: "Do unused credits roll over?",

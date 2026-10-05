@@ -31,8 +31,7 @@ for production release on Google Play).
 - **Notes & editor** — clean, private, autosaves; drafts recovered on return.
 - **Semantic Search** (1 credit) — search notes by meaning, not keywords.
 - **Ask Your Notes** (2 credits) — answers from ONLY the user's own notes.
-- **Improve / Explain / Simplify** (1 credit each) — polish, unpack, or
-  shorten text.
+- **Improve / Explain** (1 credit each) — polish or unpack text.
 - **Flashcards** (1 credit) — turns a note into study cards; review them in
   **Learning Mode** (spaced repetition + quizzes).
 - **Speech-to-Text** — dictate into notes; transcribes live.
@@ -45,7 +44,7 @@ for production release on Google Play).
 
 - Notes, export, Learning Mode: free forever.
 - 60 free AI starter credits (one-time, at signup).
-- 90 minutes speech-to-text (one-time, lifetime — not monthly).
+- 60 minutes speech-to-text (one-time, lifetime — not monthly).
 
 ## Paid Plans (two separate tracks — one does NOT unlock the other)
 
@@ -92,7 +91,7 @@ manually anytime.
 - **Can't log in:** correct email? Google users → use Google button. Reset
   password. Try another browser / clear cache. Persist → escalate.
 - **Out of credits:** check /usage. Free = 60 one-time. Need more → AI plan.
-- **Out of STT time:** free = 90 min lifetime. Plan active? Check validity
+- **Out of STT time:** free = 60 min lifetime. Plan active? Check validity
   window on /usage. Wrong after payment → escalate.
 - **Lost a note:** reopen it (autosave). Search semantically. Truly gone →
   escalate.

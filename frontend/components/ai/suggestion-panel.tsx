@@ -13,7 +13,6 @@ type SuggestionPanelProps = {
 };
 
 const ACTION_LABELS: Record<SuggestionAction, string> = {
-  simplify: "Simplified draft",
   explain: "Explanation",
   improve: "Improved draft"
 };

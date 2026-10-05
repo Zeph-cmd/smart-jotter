@@ -64,7 +64,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   }
 ];
 /* -------------------------------------------------------------------------- */
-/* 2. AI Writing Assist Plans (credits for Simplify/Improve/Explain/Search/Ask) */
+/* 2. AI Writing Assist Plans (credits for Improve/Explain/Search/Ask) */
 /* -------------------------------------------------------------------------- */
 
 export type AiPlanId = "ai_plan_a" | "ai_plan_b";
@@ -86,7 +86,7 @@ export type AiSubscriptionPlan = {
 
 /**
  * AI Writing Assist plans. These grant credits for the AI text features
- * (Simplify, Improve, Explain, Semantic Search, Ask Your Notes) and map to the
+ * (Improve, Explain, Semantic Search, Ask Your Notes) and map to the
  * `ai_subscription_status` / `ai_subscription_expiry` columns.
  *
  * Manual activation (via Supabase table editor) sets:

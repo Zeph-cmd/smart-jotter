@@ -280,9 +280,9 @@ export async function recordAiUsage(
 /**
  * Convenience wrapper: gate + return a handle that records usage on success.
  * Usage in a route:
- *   const cost = await enforceCredits(supabase, userId, "simplify");
+ *   const cost = await enforceCredits(supabase, userId, "improve");
  *   const result = await runAiCall();
- *   await recordAiUsage(supabase, userId, "simplify", cost);
+ *   await recordAiUsage(supabase, userId, "improve", cost);
  *   return result;
  */
 

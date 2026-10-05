@@ -31,7 +31,7 @@ export default function FeaturesPage() {
           "On the go — dictate a thought with speech-to-text and tidy it up later.",
           "While researching — save references, ask your notes a question, and find related ideas.",
           "When planning a project — keep context, tasks, and notes linked together.",
-          "At home brainstorming — dump ideas freely, then let AI simplify or sharpen them."
+          "At home brainstorming — dump ideas freely, then let AI sharpen them."
         ]}
       />
 

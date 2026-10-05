@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   const action = body?.action;
   const content = body?.content?.trim() ?? "";
 
-  if (!action || !["simplify", "explain", "improve"].includes(action)) {
+  if (!action || !["explain", "improve"].includes(action)) {
     return NextResponse.json(
       { error: "Valid action is required." },
       { status: 400 }

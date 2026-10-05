@@ -2,10 +2,10 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { ApiError } from "@/lib/server/errors";
 
 /**
- * Free-tier cap: 90 minutes = 5,400 seconds of total transcription time.
+ * Free-tier cap: 60 minutes = 3,600 seconds of total transcription time.
  * This is a one-time lifetime allowance (not monthly) until the user subscribes.
  */
-export const FREE_TIER_LIMIT_SECONDS = 90 * 60; // 5400
+export const FREE_TIER_LIMIT_SECONDS = 60 * 60; // 3600
 
 /**
  * Maximum duration of a single continuous recording. 30 minutes = 1,800

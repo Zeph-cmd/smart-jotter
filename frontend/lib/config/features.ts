@@ -1,7 +1,7 @@
 /**
  * Global feature flags for Smart Jotter.
  *
- * AI-powered features (Simplify, Improve, Explain, Semantic Search, and
+ * AI-powered features (Improve, Explain, Semantic Search, and
  * Ask Your Notes) are gated behind this single flag. When `false`, the
  * buttons remain visible but are greyed out and show a "Coming soon" message
  * when clicked. The underlying API routes and logic stay fully intact — only

@@ -34,7 +34,7 @@ declare global {
  * SEPARATE subscription tracks:
  *
  *   1. Speech-to-Text Plans  — recording time (subscription_status)
- *   2. AI Writing Assist Plans — credits for Simplify/Improve/Explain/Search/Ask
+ *   2. AI Writing Assist Plans — credits for Improve/Explain/Search/Ask
  *      (ai_subscription_status)
  *
  * The two are independent purchases; a user can subscribe to either, both,
@@ -109,7 +109,7 @@ export function PlansBanner() {
                 AI Writing Assist Plans
               </h2>
               <p className="mt-2 text-center text-sm text-emerald-50 sm:text-base">
-                Credits for Simplify, Improve, Explain, Semantic Search & Ask Your
+                Credits for Improve, Explain, Semantic Search & Ask Your
                 Notes. Free starter grant is 60 credits.
               </p>
 

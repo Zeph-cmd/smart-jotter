@@ -157,7 +157,7 @@ function createSoftHint(content: string) {
   }
 
   if (normalizedContent.length > 220) {
-    return "Want to simplify this? A shorter version might be easier to scan later.";
+    return "This is getting long — a shorter version might be easier to scan later.";
   }
 
   return "You have a solid draft. An improvement pass could make the key point sharper.";

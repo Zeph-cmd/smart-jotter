@@ -148,8 +148,8 @@ export async function POST(request: Request) {
   // ---------------------------------------------------------------------------
   // TEMPORARY EARLY-ACCESS STARTER CREDITS
   // ---------------------------------------------------------------------------
-  // Give every new signup 60 starter AI credits so they can try Simplify,
-  // Improve, Explain, Semantic Search, and Ask Your Notes.
+  // Give every new signup 60 starter AI credits so they can try Improve,
+  // Explain, Semantic Search, and Ask Your Notes.
   //
   // !!! TEMPORARY — MANUAL TESTING / EARLY ACCESS ONLY !!!
   // Once real subscriptions launch, credit allotment should come from MANUAL

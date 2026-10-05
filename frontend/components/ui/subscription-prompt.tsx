@@ -29,7 +29,7 @@ type SubscriptionPromptProps = {
  * Subscription options shown when a user hits their free-tier or subscription
  * limit. Two variants share the same plan display:
  *   - "speech": Speech-to-Text recording-time plans
- *   - "ai": AI Writing Assist credit plans (Simplify/Improve/Explain/Search/Ask)
+ *   - "ai": AI Writing Assist credit plans (Improve/Explain/Search/Ask)
  *
  * Payment is handled through the Paystack checkout in the plans banner.
  */
