@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { MobileAuthRedirect } from "@/components/auth/mobile-auth-redirect";
+import { PwaRegister } from "@/components/pwa-register";
 import { PlansBanner } from "@/components/ui/plans-banner";
 import { SiteFooter } from "@/components/ui/site-footer";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -29,7 +30,27 @@ export const metadata: Metadata = {
         alt: "Smart Jotter — AI-powered note-taking app"
       }
     ]
+  },
+  applicationName: "Smart Jotter",
+  appleWebApp: {
+    capable: true,
+    title: "Smart Jotter",
+    statusBarStyle: "default"
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }]
   }
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f172a" }
+  ]
 };
 
 type RootLayoutProps = {
@@ -91,6 +112,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               </div>
             </header>
             <MobileAuthRedirect />
+            <PwaRegister />
             <PlansBanner />
             {children}
             <SiteFooter />
