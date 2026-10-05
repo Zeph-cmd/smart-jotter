@@ -28,12 +28,22 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Is Smart Jotter free to use?",
     answer:
-      "Yes. Core note-taking is free. Optional AI features are available through paid plans that include a monthly allotment of AI credits. You can see your remaining credits anytime on the Usage page."
+      "Yes. Core note-taking is free forever, and every new account gets 60 free AI starter credits plus 90 minutes of lifetime speech-to-text. When you need more, you can subscribe to an AI Writing Assist plan (for credits) or a Speech-to-Text plan (for recording time)."
   },
   {
     question: "What are AI credits?",
     answer:
-      "AI credits are the units consumed when you use AI-powered features such as suggestions, summaries, transcription, flashcard generation, or quizzes. Each plan includes a monthly allotment, and you can track usage from the Usage page."
+      "AI credits are the units consumed by AI-powered features: Simplify, Improve, Explain, Semantic Search, and Flashcard generation each cost 1 credit per use; Ask Your Notes costs 2. Paid plans give you a fresh bundle of credits — AI Plan A gives 100 credits for 1 week (50 GHS / $20 USD) and AI Plan B gives 200 credits for 1 month (100 GHS / $40 USD). Track everything on the Usage page."
+  },
+  {
+    question: "Do unused credits roll over?",
+    answer:
+      "No. On every plan, any credits (or plan recording time) you haven't used simply end at the plan's end date. There is no rollover, so make the most of your plan while it's active."
+  },
+  {
+    question: "Does my plan auto-renew?",
+    answer:
+      "Yes. Both AI Writing Assist and Speech-to-Text plans renew automatically at the end of the billing period so your access continues uninterrupted. You can turn this off anytime with the auto-renew toggle on the Usage page — your plan then simply ends on its expiry date. If a renewal payment fails, the plan expires quietly and you can resubscribe manually whenever you like."
   },
   {
     question: "How do payments work?",
@@ -43,7 +53,7 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Can I cancel my subscription?",
     answer:
-      "Yes. You can stop using the paid plan at any time. Your access continues until the end of the current billing period, after which your account returns to the free tier."
+      "Yes — no lock-in. Turn off auto-renew with the toggle on the Usage page and your plan will not be renewed. Your access continues until the end of the period you've already paid for, after which your account returns to the free tier."
   },
   {
     question: "Where are my notes stored?",

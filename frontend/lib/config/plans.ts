@@ -90,7 +90,7 @@ export type AiSubscriptionPlan = {
  * `ai_subscription_status` / `ai_subscription_expiry` columns.
  *
  * Manual activation (via Supabase table editor) sets:
- *   credits_allotted         = plan.credits (200 or 400)
+ *   credits_allotted         = plan.credits (100 or 200)
  *   ai_subscription_status   = 'active'
  *   ai_subscription_expiry   = today + plan.validityDays
  */
@@ -100,20 +100,20 @@ export const AI_SUBSCRIPTION_PLANS: AiSubscriptionPlan[] = [
     name: "AI Plan A",
     priceGhs: 50,
     priceUsd: 20,
-    credits: 200,
+    credits: 100,
     validityDays: 7,
     validityLabel: "1 week",
-    description: "200 AI credits — enough for a busy week of writing assists."
+    description: "100 AI credits — enough for a busy week of writing assists."
   },
   {
     id: "ai_plan_b",
     name: "AI Plan B",
     priceGhs: 100,
     priceUsd: 40,
-    credits: 400,
+    credits: 200,
     validityDays: 30,
     validityLabel: "1 month",
-    description: "400 AI credits — best value for heavy daily use."
+    description: "200 AI credits — best value for heavy daily use."
   }
 ];
 

@@ -38,7 +38,7 @@ const softwareApplicationSchema = {
       price: "50",
       priceCurrency: "GHS",
       description:
-        "1-week plan granting Speech-to-Text recording time or 200 AI Writing Assist credits."
+        "1-week plan granting Speech-to-Text recording time or 100 AI Writing Assist credits."
     },
     {
       "@type": "Offer",
@@ -46,7 +46,7 @@ const softwareApplicationSchema = {
       price: "100",
       priceCurrency: "GHS",
       description:
-        "1-month plan granting Speech-to-Text recording time or 400 AI Writing Assist credits."
+        "1-month plan granting Speech-to-Text recording time or 200 AI Writing Assist credits."
     },
     {
       "@type": "Offer",
@@ -54,7 +54,7 @@ const softwareApplicationSchema = {
       price: "20",
       priceCurrency: "USD",
       description:
-        "1-week plan granting Speech-to-Text recording time or 200 AI Writing Assist credits, charged in USD for visitors outside Africa."
+        "1-week plan granting Speech-to-Text recording time or 100 AI Writing Assist credits, charged in USD for visitors outside Africa."
     },
     {
       "@type": "Offer",
@@ -62,7 +62,7 @@ const softwareApplicationSchema = {
       price: "40",
       priceCurrency: "USD",
       description:
-        "1-month plan granting Speech-to-Text recording time or 400 AI Writing Assist credits, charged in USD for visitors outside Africa."
+        "1-month plan granting Speech-to-Text recording time or 200 AI Writing Assist credits, charged in USD for visitors outside Africa."
     }
   ]
 };

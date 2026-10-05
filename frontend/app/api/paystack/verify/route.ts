@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/server/errors";
 import { handleRouteError } from "@/lib/server/route";
 import {
   assertAmountMatches,
+  captureAuthorization,
   createServiceRoleSupabaseClient,
   extractMetadata,
   grantPlanEntitlements,
@@ -93,6 +94,10 @@ export async function POST(request: Request) {
 
     // 5. Grant entitlements via the service-role client (bypasses RLS).
     const result = await grantPlanEntitlements(serviceSupabase, metadata);
+
+    // 5b. Save the card authorization for auto-renew (best-effort, never
+    //     blocks the grant).
+    await captureAuthorization(serviceSupabase, data, metadata);
 
     // 6. Record in the idempotency ledger.
     await markTransactionProcessed(serviceSupabase, reference, metadata, data.amount, data.currency);

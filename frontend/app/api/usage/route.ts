@@ -21,9 +21,14 @@ export async function GET() {
     const userId = requireUserId(user);
     await requireTermsAccepted(supabase, userId);
 
-    const [credits, usageByFeature] = await Promise.all([
+    const [credits, usageByFeature, entitlementsRow] = await Promise.all([
       getAiCredits(supabase, userId),
-      getUsageByFeature(supabase, userId)
+      getUsageByFeature(supabase, userId),
+      supabase
+        .from("sj_user_entitlements")
+        .select("auto_renew_ai, auto_renew_stt")
+        .eq("user_id", userId)
+        .maybeSingle()
     ]);
 
     // Build a stable, full table of every feature (even those with 0 usage)
@@ -46,6 +51,8 @@ export async function GET() {
       creditsAllotted: credits.credits_allotted,
       creditsUsed: credits.credits_used,
       creditsRemaining: credits.remaining,
+      autoRenewAi: entitlementsRow.data?.auto_renew_ai ?? true,
+      autoRenewStt: entitlementsRow.data?.auto_renew_stt ?? true,
       featureRows
     });
   } catch (error) {

@@ -51,6 +51,11 @@ type EntitlementsRow = {
 /**
  * Fetches the user's entitlements row, defaulting to zeroed values if the
  * row doesn't exist yet (first-time user).
+ *
+ * Lazy expiry normalization: if the STT plan is marked active but its expiry
+ * has passed, the plan (and any unused plan minutes) is terminated
+ * immediately — unused plan time does not roll over on any plan. The change
+ * is written back best-effort so the Usage page reflects the real state.
  */
 export async function getEntitlements(
   supabase: AppSupabaseClient,
@@ -70,13 +75,45 @@ export async function getEntitlements(
 
   const row: Partial<EntitlementsRow> = (data as EntitlementsRow | null) ?? {};
 
-  return {
+  const result: UserEntitlements = {
     usage_seconds: row.usage_seconds ?? 0,
     subscription_status: row.subscription_status ?? "none",
     subscription_expiry: row.subscription_expiry ?? null,
     subscription_minutes_allotted: row.subscription_minutes_allotted ?? 0,
     subscription_minutes_used: row.subscription_minutes_used ?? 0
   };
+
+  // Terminate an expired STT plan: unused plan minutes are lost (no rollover).
+  if (
+    result.subscription_status === "active" &&
+    result.subscription_expiry &&
+    new Date(result.subscription_expiry).getTime() <= Date.now()
+  ) {
+    result.subscription_status = "expired";
+    result.subscription_minutes_allotted = 0;
+
+    const { error: normalizeError } = await supabase
+      .from("sj_user_entitlements")
+      .update({
+        subscription_status: "expired",
+        subscription_minutes_allotted: 0,
+        updated_at: new Date().toISOString()
+      })
+      .eq("user_id", userId);
+
+    if (normalizeError) {
+      console.error(
+        "[smart-jotter]",
+        JSON.stringify({
+          scope: "stt-plan-expiry-normalize",
+          error: normalizeError.message,
+          userId
+        })
+      );
+    }
+  }
+
+  return result;
 }
 
 /**

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { logServerError } from "@/lib/server/errors";
 import {
   assertAmountMatches,
+  captureAuthorization,
   createServiceRoleSupabaseClient,
   extractMetadata,
   grantPlanEntitlements,
@@ -89,6 +90,10 @@ export async function POST(request: Request) {
 
     // 8. Grant entitlements, then record in the ledger.
     await grantPlanEntitlements(serviceSupabase, metadata);
+
+    // 8b. Save the card authorization for auto-renew (best-effort).
+    await captureAuthorization(serviceSupabase, data, metadata);
+
     await markTransactionProcessed(serviceSupabase, reference, metadata, data.amount, data.currency);
 
     return NextResponse.json({ success: true });

@@ -105,3 +105,19 @@ export function getPaystackPublicKey() {
 
   return value;
 }
+
+/**
+ * Shared secret for the daily auto-renew cron route. Set as CRON_SECRET in
+ * Vercel; the cron job sends it as `Authorization: Bearer <CRON_SECRET>`.
+ */
+export function getPaystackCronSecret() {
+  const value = process.env.CRON_SECRET;
+
+  if (!value) {
+    throw new Error(
+      "Missing cron secret. Set CRON_SECRET in Vercel environment variables."
+    );
+  }
+
+  return value;
+}

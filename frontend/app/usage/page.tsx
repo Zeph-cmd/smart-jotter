@@ -19,6 +19,8 @@ type UsageSummary = {
   creditsAllotted: number;
   creditsUsed: number;
   creditsRemaining: number;
+  autoRenewAi: boolean;
+  autoRenewStt: boolean;
   featureRows: UsageFeatureRow[];
 };
 
@@ -38,6 +40,46 @@ export default function UsagePage() {
   const [summary, setSummary] = useState<UsageSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [renewBusy, setRenewBusy] = useState<"ai" | "stt" | null>(null);
+  const [renewNotice, setRenewNotice] = useState<string | null>(null);
+
+  const toggleAutoRenew = async (track: "ai" | "stt", enabled: boolean) => {
+    setRenewBusy(track);
+    setRenewNotice(null);
+
+    // Optimistic update; rolled back on failure.
+    setSummary((prev) =>
+      prev
+        ? track === "ai"
+          ? { ...prev, autoRenewAi: enabled }
+          : { ...prev, autoRenewStt: enabled }
+        : prev
+    );
+
+    try {
+      const response = await fetch("/api/subscription/auto-renew", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ track, enabled })
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not update auto-renew.");
+      }
+    } catch {
+      // Roll back on failure.
+      setSummary((prev) =>
+        prev
+          ? track === "ai"
+            ? { ...prev, autoRenewAi: !enabled }
+            : { ...prev, autoRenewStt: !enabled }
+          : prev
+      );
+      setRenewNotice("Could not save your auto-renew setting. Please try again.");
+    } finally {
+      setRenewBusy(null);
+    }
+  };
 
   useEffect(() => {
     if (!user || isAgreementLoading || !hasAgreedToTerms) {
@@ -175,6 +217,37 @@ export default function UsagePage() {
               </div>
             </section>
 
+            {/* Auto-renew controls */}
+            <section className="rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Auto-renew
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Plans renew automatically at the end date so your access
+                continues uninterrupted. Turn a track off and it simply ends on
+                its expiry date — unused credits and time do not roll over.
+              </p>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <AutoRenewToggle
+                  label="AI Writing Assist"
+                  enabled={summary.autoRenewAi}
+                  busy={renewBusy === "ai"}
+                  onToggle={(enabled) => void toggleAutoRenew("ai", enabled)}
+                />
+                <AutoRenewToggle
+                  label="Speech-to-Text"
+                  enabled={summary.autoRenewStt}
+                  busy={renewBusy === "stt"}
+                  onToggle={(enabled) => void toggleAutoRenew("stt", enabled)}
+                />
+              </div>
+              {renewNotice ? (
+                <p className="mt-4 text-sm text-red-600 dark:text-red-300">
+                  {renewNotice}
+                </p>
+              ) : null}
+            </section>
+
             {/* Big credit display */}
             <section className="rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
               <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
@@ -243,6 +316,48 @@ export default function UsagePage() {
         ) : null}
       </div>
     </main>
+  );
+}
+
+function AutoRenewToggle({
+  label,
+  enabled,
+  busy,
+  onToggle
+}: {
+  label: string;
+  enabled: boolean;
+  busy: boolean;
+  onToggle: (enabled: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-line bg-slate-50 px-5 py-4 dark:bg-slate-950">
+      <div>
+        <p className="font-medium text-ink dark:text-slate-100">{label}</p>
+        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          {enabled ? "Renews at end date" : "Ends at expiry date"}
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label={`${label} auto-renew`}
+        disabled={busy}
+        onClick={() => onToggle(!enabled)}
+        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-60 ${
+          enabled
+            ? "bg-emerald-500"
+            : "bg-slate-300 dark:bg-slate-700"
+        }`}
+      >
+        <span
+          className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
+            enabled ? "left-6" : "left-1"
+          }`}
+        />
+      </button>
+    </div>
   );
 }
 

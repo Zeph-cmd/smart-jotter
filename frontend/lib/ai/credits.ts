@@ -83,6 +83,11 @@ export async function ensureAiStarterCredits(
 
 /**
  * Reads the user's credit balance and repairs an uninitialized free account.
+ *
+ * Lazy expiry normalization: if the AI plan is marked active but its expiry
+ * date has passed, the plan (and any remaining paid credits) is terminated
+ * immediately — credits do not roll over on any plan. Free starter credits
+ * are never re-granted after a plan has been activated.
  */
 export async function getAiCredits(
   supabase: AppSupabaseClient,
@@ -101,15 +106,48 @@ export async function getAiCredits(
   }
 
   const row = (data ?? null) as EntitlementsCreditRow | null;
-  const allotted = row?.credits_allotted ?? 0;
+  let allotted = row?.credits_allotted ?? 0;
   const used = row?.credits_used ?? 0;
+  let status = row?.ai_subscription_status ?? "none";
+  const expiry = row?.ai_subscription_expiry ?? null;
+
+  // Terminate an expired AI plan: remaining credits are lost (no rollover).
+  if (
+    status === "active" &&
+    expiry &&
+    new Date(`${expiry}T23:59:59`).getTime() <= Date.now()
+  ) {
+    status = "expired";
+    allotted = 0;
+
+    // Best-effort write-back so the Usage page reflects the real state.
+    const { error: normalizeError } = await supabase
+      .from("sj_user_entitlements")
+      .update({
+        ai_subscription_status: "expired",
+        credits_allotted: 0,
+        updated_at: new Date().toISOString()
+      })
+      .eq("user_id", userId);
+
+    if (normalizeError) {
+      console.error(
+        "[smart-jotter]",
+        JSON.stringify({
+          scope: "ai-plan-expiry-normalize",
+          error: normalizeError.message,
+          userId
+        })
+      );
+    }
+  }
 
   return {
     credits_allotted: allotted,
     credits_used: used,
     remaining: Math.max(0, allotted - used),
-    ai_subscription_status: row?.ai_subscription_status ?? "none",
-    ai_subscription_expiry: row?.ai_subscription_expiry ?? null
+    ai_subscription_status: status,
+    ai_subscription_expiry: expiry
   };
 }
 

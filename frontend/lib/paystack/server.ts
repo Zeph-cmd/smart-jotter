@@ -40,6 +40,15 @@ type PaystackVerificationData = {
     email: string;
     customer_code?: string;
   };
+  authorization?: {
+    authorization_code?: string;
+    card_type?: string;
+    last4?: string;
+    exp_month?: string | number;
+    exp_year?: string | number;
+    bank?: string;
+    reusable?: boolean;
+  };
   metadata?: unknown;
 };
 
@@ -142,6 +151,7 @@ export async function verifyPaystackTransaction(reference: string): Promise<Pays
       email: data.customer?.email ?? "",
       customer_code: data.customer?.customer_code
     },
+    authorization: data.authorization,
     metadata: data.metadata
   };
 }
@@ -318,6 +328,9 @@ function computeExpiryDate(validityDays: number): string {
  * Updates `sj_user_entitlements` for the paid plan. This is the single source
  * of truth for granting access after a verified Paystack transaction.
  *
+ * Also records the plan id per track (`stt_last_plan_id` / `ai_last_plan_id`)
+ * so the daily auto-renew job knows which plan to re-charge.
+ *
  * Idempotent: it always SETS the plan columns (not increments), so a duplicate
  * verify / webhook call simply refreshes the same entitlements rather than
  * stacking.
@@ -338,7 +351,8 @@ export async function grantPlanEntitlements(
           subscription_status: "active",
           subscription_expiry: computeExpiryDate(plan.validityDays),
           subscription_minutes_allotted: minutesAllotted,
-          subscription_minutes_used: 0
+          subscription_minutes_used: 0,
+          stt_last_plan_id: plan.id
         },
         { onConflict: "user_id" }
       );
@@ -363,7 +377,8 @@ export async function grantPlanEntitlements(
         ai_subscription_status: "active",
         ai_subscription_expiry: computeExpiryDate(plan.validityDays),
         credits_allotted: plan.credits,
-        credits_used: 0
+        credits_used: 0,
+        ai_last_plan_id: plan.id
       },
       { onConflict: "user_id" }
     );
@@ -375,6 +390,156 @@ export async function grantPlanEntitlements(
   }
 
   return { activated: "ai", planId: plan.id };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Saved card authorization (auto-renew)                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Stores the card authorization from a successful transaction so the plan can
+ * be re-charged at renewal time. Best-effort: a failure here never blocks the
+ * grant — auto-renew simply won't be available for this payment.
+ *
+ * Only reusable authorizations are saved (single-use ones can't be charged
+ * again and are useless for renewal).
+ */
+export async function captureAuthorization(
+  supabase: ReturnType<typeof createServiceRoleSupabaseClient>,
+  data: PaystackVerificationData,
+  metadata: PaystackMetadata
+): Promise<void> {
+  const auth = data.authorization;
+  const code = auth?.authorization_code;
+
+  if (!code || auth?.reusable === false) {
+    return;
+  }
+
+  const currency = data.currency.toUpperCase();
+  if (currency !== "GHS" && currency !== "USD") {
+    return;
+  }
+
+  const { error } = await supabase
+    .from("sj_payment_authorizations")
+    .upsert(
+      {
+        user_id: metadata.user_id,
+        authorization_code: code,
+        customer_code: data.customer.customer_code ?? null,
+        email: data.customer.email,
+        card_type: auth?.card_type ?? null,
+        last4: auth?.last4 ?? null,
+        exp_month: auth?.exp_month != null ? String(auth.exp_month) : null,
+        exp_year: auth?.exp_year != null ? String(auth.exp_year) : null,
+        bank: auth?.bank ?? null,
+        currency
+      },
+      { onConflict: "user_id" }
+    );
+
+  if (error) {
+    logServerError("paystack-authorization-capture", error);
+  }
+}
+
+/** Result of a renewal charge attempt. */
+export type ChargeAuthorizationResult =
+  | { ok: true; reference: string; amountMinor: number; currency: "GHS" | "USD" }
+  | { ok: false; error: string };
+
+/**
+ * Re-charges a saved card via Paystack's charge_authorization endpoint.
+ *
+ * Docs: https://paystack.com/docs/payments/accept-payments/#charge-authorization
+ *
+ * Charges the plan's current price in the currency the card was originally
+ * used with. Returns ok:false (never throws) for payment failures so the
+ * caller can expire the plan quietly.
+ */
+export async function chargeAuthorization(
+  supabase: ReturnType<typeof createServiceRoleSupabaseClient>,
+  userId: string,
+  metadata: PaystackMetadata
+): Promise<ChargeAuthorizationResult> {
+  // Load the saved authorization (service role bypasses RLS).
+  const { data: saved, error: loadError } = await supabase
+    .from("sj_payment_authorizations")
+    .select("authorization_code, customer_code, email, currency")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (loadError || !saved) {
+    return { ok: false, error: loadError?.message ?? "No saved card on file." };
+  }
+
+  const currency = (saved.currency as string).toUpperCase();
+  if (currency !== "GHS" && currency !== "USD") {
+    return { ok: false, error: `Unsupported saved currency: ${currency}` };
+  }
+
+  const prices = getPlanPrices(metadata.plan_type, metadata.plan_id);
+  const amountMinor = Math.round(
+    (currency === "USD" ? prices.priceUsd : prices.priceGhs) * 100
+  );
+
+  const reference = `sj_renew_${metadata.plan_type}_${Date.now()}_${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+
+  const secret = getPaystackSecretKey();
+  const response = await fetch("https://api.paystack.co/transaction/charge_authorization", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      authorization_code: saved.authorization_code,
+      email: saved.email,
+      amount: amountMinor,
+      currency,
+      reference,
+      metadata: {
+        user_id: userId,
+        plan_type: metadata.plan_type,
+        plan_id: metadata.plan_id
+      }
+    }),
+    cache: "no-store"
+  });
+
+  const json = (await response.json().catch(() => null)) as {
+    status?: boolean;
+    message?: string;
+    data?: { status?: string; reference?: string };
+  } | null;
+
+  if (!response.ok || !json?.status || !json.data) {
+    return {
+      ok: false,
+      error: `Paystack charge_authorization HTTP ${response.status}: ${json?.message ?? "no response"}`
+    };
+  }
+
+  // Pending/failed states are both non-success for our purposes. A pending
+  // charge (rare for card auths, possible with OTP flows) is treated as a
+  // failure — the user can resubscribe manually if it doesn't complete.
+  if (json.data.status !== "success") {
+    return {
+      ok: false,
+      error: `Renewal charge not successful: ${json.data.status ?? json.message ?? "unknown"}`
+    };
+  }
+
+  return {
+    ok: true,
+    reference: json.data.reference ?? reference,
+    amountMinor,
+    currency: currency as "GHS" | "USD"
+  };
 }
 
 /* -------------------------------------------------------------------------- */
