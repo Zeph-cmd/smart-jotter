@@ -12,6 +12,17 @@ type UsageFeatureRow = {
   creditsUsed: number;
 };
 
+type SttSummary = {
+  tier: "free" | "subscription" | "purchased";
+  remainingMinutes: number;
+  limitMinutes: number;
+  canRecord: boolean;
+  subscriptionStatus: string;
+  subscriptionExpiry: string | null;
+  freeMinutesRemaining: number;
+  purchasedMinutesRemaining: number;
+};
+
 type UsageSummary = {
   planName: string;
   subscriptionStatus: string;
@@ -21,6 +32,7 @@ type UsageSummary = {
   creditsRemaining: number;
   autoRenewAi: boolean;
   autoRenewStt: boolean;
+  stt: SttSummary;
   featureRows: UsageFeatureRow[];
 };
 
@@ -176,6 +188,68 @@ export default function UsagePage() {
 
         {user && summary ? (
           <>
+            {/* Speech-to-Text summary */}
+            <section className="rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Speech-to-Text
+              </h2>
+              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    Plan
+                  </p>
+                  <p className="mt-1 text-lg font-semibold capitalize text-ink dark:text-slate-100">
+                    {summary.stt.subscriptionStatus === "active"
+                      ? "STT plan"
+                      : "Free tier"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    Expires
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-ink dark:text-slate-100">
+                    {summary.stt.subscriptionStatus === "active" &&
+                    summary.stt.subscriptionExpiry
+                      ? new Date(summary.stt.subscriptionExpiry).toLocaleDateString()
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    Recording time left
+                  </p>
+                  <p
+                    className={`mt-1 text-lg font-semibold ${
+                      summary.stt.remainingMinutes > 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {summary.stt.remainingMinutes} min
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-4 border-t border-line/60 pt-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    Free minutes left
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-ink dark:text-slate-100">
+                    {summary.stt.freeMinutesRemaining} min
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    Extra minutes (never expire)
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-ink dark:text-slate-100">
+                    {summary.stt.purchasedMinutesRemaining} min
+                  </p>
+                </div>
+              </div>
+            </section>
+
             {/* Plan / subscription summary */}
             <section className="rounded-[32px] border border-line bg-white p-6 shadow-jotter dark:bg-slate-900 sm:p-8">
               <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">

@@ -28,7 +28,7 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Is Smart Jotter free to use?",
     answer:
-      "Yes. Core note-taking is free forever, and every new account gets 60 free AI starter credits plus 60 minutes of lifetime speech-to-text. When you need more, you can subscribe to an AI Writing Assist plan (for credits) or a Speech-to-Text plan (for recording time)."
+      "Yes. Core note-taking is free forever, and every new account gets 60 free AI starter credits plus 45 minutes of lifetime speech-to-text. When you need more, you can subscribe to an AI Writing Assist plan (for credits), subscribe to a Speech-to-Text plan (for recording time), or buy extra STT minutes that never expire."
   },
   {
     question: "What are AI credits?",
@@ -38,7 +38,12 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Do unused credits roll over?",
     answer:
-      "No. On every plan, any credits (or plan recording time) you haven't used simply end at the plan's end date. There is no rollover, so make the most of your plan while it's active."
+      "No. On every plan, any credits (or plan recording time) you haven't used simply end at the plan's end date. There is no rollover, so make the most of your plan while it's active. The one exception is Extra Minutes top-ups — those never expire."
+  },
+  {
+    question: "Need more recording time before my plan ends?",
+    answer:
+      "Yes — you can buy Extra Minutes for Speech-to-Text without changing your plan. They cost 15 GHS per hour, from 1 hour up to 10 hours, they never expire, and they stack with any plan. Smart Jotter always uses your plan minutes first, then your Extra Minutes, then your free allowance. Extra Minutes are priced in Ghana cedis only for now."
   },
   {
     question: "Does my plan auto-renew?",

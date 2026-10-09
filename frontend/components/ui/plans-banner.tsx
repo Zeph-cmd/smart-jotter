@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   AI_SUBSCRIPTION_PLANS,
+  STT_TOPUP_PLANS,
   SUBSCRIPTION_PLANS,
   formatPlanPrice,
   getPlanPrice,
@@ -13,12 +14,56 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { payWithPaystack } from "@/lib/paystack/client";
 import type { PaystackMetadata } from "@/lib/paystack/types";
 
-type PlanType = "stt" | "ai";
+type PlanType = "stt" | "ai" | "stt_topup";
 
 type PaymentStatus = {
   state: "idle" | "paying" | "success" | "error";
   message?: string;
 };
+
+/**
+ * Shared payment flow: open the Paystack popup, then verify server-side.
+ * Used by plan cards and top-up cards alike so the verify + grant path is
+ * identical everywhere.
+ */
+async function payAndVerify(args: {
+  email: string;
+  amount: number;
+  currency: PricingCurrency;
+  metadata: PaystackMetadata;
+}): Promise<{ ok: boolean; message: string }> {
+  // 1. Open the Paystack popup.
+  const { reference } = await payWithPaystack({
+    email: args.email,
+    amount: args.amount,
+    currency: args.currency,
+    metadata: args.metadata
+  });
+
+  // 2. Verify server-side and activate entitlements.
+  const res = await fetch("/api/paystack/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reference })
+  });
+
+  const data = (await res.json()) as {
+    success?: boolean;
+    message?: string;
+    error?: string;
+  };
+
+  if (res.ok && data.success) {
+    return { ok: true, message: data.message ?? "Payment successful!" };
+  }
+
+  return {
+    ok: false,
+    message:
+      data.error ??
+      "Verification failed. If you were charged, please contact support."
+  };
+}
 
 declare global {
   interface Window {
@@ -75,7 +120,7 @@ export function PlansBanner() {
                 Speech-to-Text Plans
               </h2>
               <p className="mt-2 text-center text-sm text-emerald-50 sm:text-base">
-                Free tier gives you 90 minutes of recording. Upgrade for more time:
+                Free tier gives you 45 minutes of recording. Upgrade for more time:
               </p>
 
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -97,6 +142,30 @@ export function PlansBanner() {
                 ))}
               </div>
             </section>
+
+            {/* Divider */}
+            <hr className="border-emerald-500/40" />
+
+            {/* ───────────────────────────────────────────────────────────── */}
+            {/* 1b. Speech-to-Text Extra Minutes (GHS only, never expire)     */}
+            {/* ───────────────────────────────────────────────────────────── */}
+            {currency === "GHS" ? (
+              <section>
+                <h2 className="text-center text-xl font-bold tracking-tight sm:text-2xl">
+                  Extra Minutes
+                </h2>
+                <p className="mt-2 text-center text-sm text-emerald-50 sm:text-base">
+                  Need more recording time? Extra Minutes never expire and
+                  stack with any plan. 15 GHS per hour.
+                </p>
+
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  {STT_TOPUP_PLANS.map((topup) => (
+                    <TopUpCard key={topup.id} topup={topup} />
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             {/* Divider */}
             <hr className="border-emerald-500/40" />
@@ -199,40 +268,21 @@ function PlanCard({
     setStatus({ state: "paying" });
 
     try {
-      const metadata: PaystackMetadata = {
-        user_id: user.id,
-        plan_type: planType,
-        plan_id: planId as PaystackMetadata["plan_id"]
-      };
-
-      // 1. Open the Paystack popup.
-      const { reference } = await payWithPaystack({
+      const result = await payAndVerify({
         email: user.email ?? "",
         amount: price,
         currency,
-        metadata
+        metadata: {
+          user_id: user.id,
+          plan_type: planType,
+          plan_id: planId as PaystackMetadata["plan_id"]
+        }
       });
 
-      // 2. Verify server-side and activate entitlements.
-      const res = await fetch("/api/paystack/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference })
+      setStatus({
+        state: result.ok ? "success" : "error",
+        message: result.message
       });
-
-      const data = (await res.json()) as { success?: boolean; message?: string; error?: string };
-
-      if (res.ok && data.success) {
-        setStatus({
-          state: "success",
-          message: data.message ?? "Subscription activated successfully!"
-        });
-      } else {
-        setStatus({
-          state: "error",
-          message: data.error ?? "Verification failed. If you were charged, please contact support."
-        });
-      }
     } catch (error) {
       setStatus({
         state: "error",
@@ -272,64 +322,7 @@ function PlanCard({
       {supportsApplePay ? (
         <button
           type="button"
-          onClick={async () => {
-            if (!user) {
-              setStatus({
-                state: "error",
-                message: "Please sign in first to subscribe."
-              });
-              return;
-            }
-
-            setStatus({ state: "paying" });
-
-            try {
-              const metadata: PaystackMetadata = {
-                user_id: user.id,
-                plan_type: planType,
-                plan_id: planId as PaystackMetadata["plan_id"]
-              };
-
-              const { reference } = await payWithPaystack({
-                email: user.email ?? "",
-                amount: price,
-                currency,
-                metadata
-              });
-
-              const res = await fetch("/api/paystack/verify", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ reference })
-              });
-
-              const data = (await res.json()) as {
-                success?: boolean;
-                message?: string;
-                error?: string;
-              };
-
-              if (res.ok && data.success) {
-                setStatus({
-                  state: "success",
-                  message: data.message ?? "Subscription activated successfully!"
-                });
-              } else {
-                setStatus({
-                  state: "error",
-                  message:
-                    data.error ??
-                    "Verification failed. If you were charged, please contact support."
-                });
-              }
-            } catch (error) {
-              setStatus({
-                state: "error",
-                message:
-                  error instanceof Error ? error.message : "Payment failed. Please try again."
-              });
-            }
-          }}
+          onClick={handlePay}
           disabled={status.state === "paying"}
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 text-sm font-bold text-white transition hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -342,7 +335,7 @@ function PlanCard({
 
       <button
         type="button"
-        onClick={async () => {
+        onClick={() => {
           if (!supportsApplePay) {
             setStatus({
               state: "error",
@@ -351,63 +344,7 @@ function PlanCard({
             });
             return;
           }
-
-          if (!user) {
-            setStatus({
-              state: "error",
-              message: "Please sign in first to subscribe."
-            });
-            return;
-          }
-
-          setStatus({ state: "paying" });
-
-          try {
-            const metadata: PaystackMetadata = {
-              user_id: user.id,
-              plan_type: planType,
-              plan_id: planId as PaystackMetadata["plan_id"]
-            };
-
-            const { reference } = await payWithPaystack({
-              email: user.email ?? "",
-              amount: price,
-              currency,
-              metadata
-            });
-
-            const res = await fetch("/api/paystack/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ reference })
-            });
-
-            const data = (await res.json()) as {
-              success?: boolean;
-              message?: string;
-              error?: string;
-            };
-
-            if (res.ok && data.success) {
-              setStatus({
-                state: "success",
-                message: data.message ?? "Subscription activated successfully!"
-              });
-            } else {
-              setStatus({
-                state: "error",
-                message:
-                  data.error ??
-                  "Verification failed. If you were charged, please contact support."
-              });
-            }
-          } catch (error) {
-            setStatus({
-              state: "error",
-              message:
-                error instanceof Error ? error.message : "Payment failed. Please try again."
-            });
-          }
+          void handlePay();
         }}
         disabled={status.state === "paying"}
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 text-sm font-bold text-white transition hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-black"
@@ -438,6 +375,82 @@ function PlanCard({
         {status.state === "paying" ? "Processing…" : `Pay ${display} with Paystack`}
       </button>
 
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Top-up card: Extra Minutes (Speech-to-Text, GHS only, never expire)        */
+/* -------------------------------------------------------------------------- */
+
+function TopUpCard({ topup }: { topup: (typeof STT_TOPUP_PLANS)[number] }) {
+  const { user } = useAuth();
+  const [status, setStatus] = useState<PaymentStatus>({ state: "idle" });
+
+  async function handlePay() {
+    if (!user) {
+      setStatus({
+        state: "error",
+        message: "Please sign in first."
+      });
+      return;
+    }
+
+    setStatus({ state: "paying" });
+
+    try {
+      const result = await payAndVerify({
+        email: user.email ?? "",
+        amount: topup.priceGhs,
+        currency: "GHS",
+        metadata: {
+          user_id: user.id,
+          plan_type: "stt_topup",
+          plan_id: topup.id
+        }
+      });
+
+      setStatus({
+        state: result.ok ? "success" : "error",
+        message: result.message
+      });
+    } catch (error) {
+      setStatus({
+        state: "error",
+        message: error instanceof Error ? error.message : "Payment failed. Please try again."
+      });
+    }
+  }
+
+  return (
+    <div className="flex flex-col rounded-2xl border border-emerald-400/50 bg-white/10 p-4 backdrop-blur-sm">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold">{topup.name}</h3>
+        <span className="text-lg font-bold">{topup.priceGhs} GHS</span>
+      </div>
+      <span className="mt-2 w-fit rounded-full bg-emerald-900/60 px-2 py-0.5 text-[11px] font-medium text-emerald-50">
+        Never expires
+      </span>
+
+      {status.state === "success" ? (
+        <p className="mt-3 rounded-lg bg-emerald-900/60 px-3 py-2 text-xs font-medium text-emerald-50">
+          ✓ {status.message}
+        </p>
+      ) : null}
+      {status.state === "error" ? (
+        <p className="mt-3 rounded-lg bg-red-900/60 px-3 py-2 text-xs font-medium text-red-50">
+          ✕ {status.message}
+        </p>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={handlePay}
+        disabled={status.state === "paying"}
+        className="mt-3 w-full rounded-lg bg-white px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {status.state === "paying" ? "Processing…" : `Pay ${topup.priceGhs} GHS`}
+      </button>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
   createServiceRoleSupabaseClient,
   extractMetadata,
   grantPlanEntitlements,
+  grantTopupMinutes,
   isTransactionProcessed,
   markTransactionProcessed,
   verifyPaystackTransaction,
@@ -89,7 +90,12 @@ export async function POST(request: Request) {
     }
 
     // 8. Grant entitlements, then record in the ledger.
-    await grantPlanEntitlements(serviceSupabase, metadata);
+    //    Top-ups credit never-expiring minutes; plans set subscription state.
+    if (metadata.plan_type === "stt_topup") {
+      await grantTopupMinutes(serviceSupabase, metadata);
+    } else {
+      await grantPlanEntitlements(serviceSupabase, metadata);
+    }
 
     // 8b. Save the card authorization for auto-renew (best-effort).
     await captureAuthorization(serviceSupabase, data, metadata);

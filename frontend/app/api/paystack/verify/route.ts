@@ -8,6 +8,7 @@ import {
   createServiceRoleSupabaseClient,
   extractMetadata,
   grantPlanEntitlements,
+  grantTopupMinutes,
   isTransactionProcessed,
   markTransactionProcessed,
   verifyPaystackTransaction
@@ -93,7 +94,11 @@ export async function POST(request: Request) {
     }
 
     // 5. Grant entitlements via the service-role client (bypasses RLS).
-    const result = await grantPlanEntitlements(serviceSupabase, metadata);
+    //    Top-ups credit never-expiring minutes; plans set subscription state.
+    const result =
+      metadata.plan_type === "stt_topup"
+        ? await grantTopupMinutes(serviceSupabase, metadata)
+        : await grantPlanEntitlements(serviceSupabase, metadata);
 
     // 5b. Save the card authorization for auto-renew (best-effort, never
     //     blocks the grant).
@@ -108,9 +113,14 @@ export async function POST(request: Request) {
       /* non-fatal */
     });
 
+    const successMessage =
+      result.activated === "stt_topup"
+        ? `Extra Minutes added: ${Math.round(result.secondsAdded / 60)} minutes that never expire.`
+        : `${result.activated === "stt" ? "Speech-to-Text" : "AI Writing Assist"} plan activated successfully.`;
+
     return NextResponse.json({
       success: true,
-      message: `${result.activated === "stt" ? "Speech-to-Text" : "AI Writing Assist"} plan activated successfully.`,
+      message: successMessage,
       plan: result
     });
   } catch (error) {

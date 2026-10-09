@@ -2,10 +2,10 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { ApiError } from "@/lib/server/errors";
 
 /**
- * Free-tier cap: 60 minutes = 3,600 seconds of total transcription time.
+ * Free-tier cap: 45 minutes = 2,700 seconds of total transcription time.
  * This is a one-time lifetime allowance (not monthly) until the user subscribes.
  */
-export const FREE_TIER_LIMIT_SECONDS = 60 * 60; // 3600
+export const FREE_TIER_LIMIT_SECONDS = 45 * 60; // 2700
 
 /**
  * Maximum duration of a single continuous recording. 30 minutes = 1,800
@@ -21,9 +21,10 @@ export type UserEntitlements = {
   subscription_expiry: string | null;
   subscription_minutes_allotted: number;
   subscription_minutes_used: number;
+  purchased_seconds_remaining: number;
 };
 
-export type AccessTier = "free" | "subscription";
+export type AccessTier = "free" | "subscription" | "purchased";
 
 export type AudioAccess = {
   /** Current tier being evaluated. */
@@ -46,6 +47,7 @@ type EntitlementsRow = {
   subscription_expiry: string | null;
   subscription_minutes_allotted: number | null;
   subscription_minutes_used: number | null;
+  purchased_seconds_remaining: number | null;
 };
 
 /**
@@ -64,7 +66,7 @@ export async function getEntitlements(
   const { data, error } = await supabase
     .from("sj_user_entitlements")
     .select(
-      "usage_seconds, subscription_status, subscription_expiry, subscription_minutes_allotted, subscription_minutes_used"
+      "usage_seconds, subscription_status, subscription_expiry, subscription_minutes_allotted, subscription_minutes_used, purchased_seconds_remaining"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -80,7 +82,8 @@ export async function getEntitlements(
     subscription_status: row.subscription_status ?? "none",
     subscription_expiry: row.subscription_expiry ?? null,
     subscription_minutes_allotted: row.subscription_minutes_allotted ?? 0,
-    subscription_minutes_used: row.subscription_minutes_used ?? 0
+    subscription_minutes_used: row.subscription_minutes_used ?? 0,
+    purchased_seconds_remaining: row.purchased_seconds_remaining ?? 0
   };
 
   // Terminate an expired STT plan: unused plan minutes are lost (no rollover).
@@ -132,6 +135,9 @@ export async function getAudioAccess(
 /**
  * Evaluates access purely from an entitlements object (no DB call). Useful for
  * keeping the DB-query and enforcement paths consistent.
+ *
+ * Consumption order: active plan minutes first (they expire), then purchased
+ * top-up minutes (never expire, paid), then the free lifetime allowance.
  */
 export function evaluateAccess(entitlements: UserEntitlements): AudioAccess {
   const now = new Date();
@@ -143,7 +149,7 @@ export function evaluateAccess(entitlements: UserEntitlements): AudioAccess {
     entitlements.subscription_status !== "active" ||
     (expiryDate !== null && expiryDate.getTime() <= now.getTime());
 
-  // Active subscription takes precedence over the free tier.
+  // 1. Active subscription takes precedence.
   if (entitlements.subscription_status === "active" && !subscriptionExpired) {
     const limitSeconds = entitlements.subscription_minutes_allotted * 60;
     const usedSeconds = Math.round(entitlements.subscription_minutes_used * 60);
@@ -159,7 +165,20 @@ export function evaluateAccess(entitlements: UserEntitlements): AudioAccess {
     };
   }
 
-  // Free tier.
+  // 2. Purchased top-up minutes (never expire).
+  const purchasedRemaining = Math.max(0, entitlements.purchased_seconds_remaining);
+  if (purchasedRemaining > 0) {
+    return {
+      tier: "purchased",
+      canRecord: true,
+      usedSeconds: 0,
+      limitSeconds: purchasedRemaining,
+      remainingSeconds: purchasedRemaining,
+      subscriptionExpired
+    };
+  }
+
+  // 3. Free tier.
   const usedSeconds = entitlements.usage_seconds;
   const limitSeconds = FREE_TIER_LIMIT_SECONDS;
   const remainingSeconds = Math.max(0, limitSeconds - usedSeconds);
@@ -187,11 +206,15 @@ export async function enforceAudioQuota(
 
   if (requestedSeconds > access.remainingSeconds || !access.canRecord) {
     const tierLabel =
-      access.tier === "subscription" ? "Subscription" : "Free-tier";
+      access.tier === "subscription"
+        ? "Subscription"
+        : access.tier === "purchased"
+          ? "Extra-minutes"
+          : "Free-tier";
     throw new ApiError(
       `${tierLabel} audio limit reached. You have ${formatDuration(
         access.remainingSeconds
-      )} left. Upgrade to continue recording.`,
+      )} left. Upgrade to a plan or buy extra minutes to continue recording.`,
       402
     );
   }
@@ -201,7 +224,10 @@ export async function enforceAudioQuota(
 
 /**
  * Records usage after a successful transcription. Routes the increment to the
- * correct counter based on the current active tier.
+ * correct bucket based on the current active tier:
+ *   subscription -> plan minutes (expiring)
+ *   purchased    -> purchased top-up seconds (never expire)
+ *   free         -> free lifetime allowance
  */
 export async function recordAudioUsage(
   supabase: AppSupabaseClient,
@@ -218,6 +244,19 @@ export async function recordAudioUsage(
 
     if (error) {
       throw new Error(`Could not record subscription usage: ${error.message}`);
+    }
+
+    return;
+  }
+
+  if (access.tier === "purchased") {
+    const { error } = await supabase.rpc("use_purchased_seconds", {
+      input_user_id: userId,
+      input_seconds: Math.round(seconds)
+    });
+
+    if (error) {
+      throw new Error(`Could not record purchased minutes usage: ${error.message}`);
     }
 
     return;
@@ -241,7 +280,8 @@ export async function getAudioQuotaSummary(
   supabase: AppSupabaseClient,
   userId: string
 ) {
-  const access = await getAudioAccess(supabase, userId);
+  const entitlements = await getEntitlements(supabase, userId);
+  const access = evaluateAccess(entitlements);
 
   return {
     tier: access.tier,
@@ -252,7 +292,15 @@ export async function getAudioQuotaSummary(
     usedMinutes: Math.round(access.usedSeconds / 60),
     remainingMinutes: Math.floor(access.remainingSeconds / 60),
     canRecord: access.canRecord,
-    subscriptionExpired: access.subscriptionExpired
+    subscriptionExpired: access.subscriptionExpired,
+    subscriptionStatus: entitlements.subscription_status,
+    subscriptionExpiry: entitlements.subscription_expiry,
+    freeMinutesRemaining: Math.floor(
+      Math.max(0, FREE_TIER_LIMIT_SECONDS - entitlements.usage_seconds) / 60
+    ),
+    purchasedMinutesRemaining: Math.floor(
+      Math.max(0, entitlements.purchased_seconds_remaining) / 60
+    )
   };
 }
 

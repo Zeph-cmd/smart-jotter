@@ -16,9 +16,11 @@ import { getPaystackSecretKey, getSupabaseServiceRoleKey, getSupabaseUrl } from 
 import { logServerError } from "@/lib/server/errors";
 import {
   AI_SUBSCRIPTION_PLANS,
+  STT_TOPUP_PLANS,
   SUBSCRIPTION_PLANS,
   type AiPlanId,
-  type PlanId
+  type PlanId,
+  type SttTopupId
 } from "@/lib/config/plans";
 import type { PaystackMetadata } from "@/lib/paystack/types";
 
@@ -162,8 +164,8 @@ export async function verifyPaystackTransaction(reference: string): Promise<Pays
 
 /** Returns the expected prices (in major currency units) for a plan. */
 function getPlanPrices(
-  planType: "stt" | "ai",
-  planId: PlanId | AiPlanId
+  planType: "stt" | "ai" | "stt_topup",
+  planId: PlanId | AiPlanId | SttTopupId
 ): { priceGhs: number; priceUsd: number } {
   if (planType === "stt") {
     const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
@@ -171,6 +173,15 @@ function getPlanPrices(
       throw new Error(`Unknown Speech-to-Text plan: ${planId}`);
     }
     return { priceGhs: plan.priceGhs, priceUsd: plan.priceUsd };
+  }
+
+  if (planType === "stt_topup") {
+    const plan = STT_TOPUP_PLANS.find((p) => p.id === planId);
+    if (!plan) {
+      throw new Error(`Unknown Speech-to-Text top-up: ${planId}`);
+    }
+    // Top-ups are GHS-only for now; no USD equivalent is offered.
+    return { priceGhs: plan.priceGhs, priceUsd: plan.priceGhs };
   }
 
   const plan = AI_SUBSCRIPTION_PLANS.find((p) => p.id === planId);
@@ -203,13 +214,17 @@ export function extractMetadata(raw: unknown): PaystackMetadata {
     throw new Error("Transaction metadata is missing plan_id.");
   }
 
-  if (planType !== "stt" && planType !== "ai") {
+  if (planType !== "stt" && planType !== "ai" && planType !== "stt_topup") {
     throw new Error(`Invalid plan_type in metadata: ${String(planType)}`);
   }
 
   if (planType === "stt") {
     if (!SUBSCRIPTION_PLANS.some((p) => p.id === planId)) {
       throw new Error(`Invalid Speech-to-Text plan_id: ${String(planId)}`);
+    }
+  } else if (planType === "stt_topup") {
+    if (!STT_TOPUP_PLANS.some((p) => p.id === planId)) {
+      throw new Error(`Invalid Speech-to-Text top-up plan_id: ${String(planId)}`);
     }
   } else {
     if (!AI_SUBSCRIPTION_PLANS.some((p) => p.id === planId)) {
@@ -236,6 +251,14 @@ export function assertAmountMatches(
 
   if (currency !== "GHS" && currency !== "USD") {
     throw new Error(`Currency mismatch: paid in ${currency}, expected GHS or USD.`);
+  }
+
+  // Top-ups are GHS-only: reject any USD payment carrying a top-up id so a
+  // forged metadata pair can never activate minutes at the wrong price.
+  if (metadata.plan_type === "stt_topup" && currency !== "GHS") {
+    throw new Error(
+      `Currency mismatch: Extra Minutes are charged in GHS, paid in ${currency}.`
+    );
   }
 
   const expectedMajor = currency === "USD" ? prices.priceUsd : prices.priceGhs;
@@ -390,6 +413,33 @@ export async function grantPlanEntitlements(
   }
 
   return { activated: "ai", planId: plan.id };
+}
+
+/**
+ * Credits purchased Extra Minutes after a verified top-up transaction.
+ *
+ * Unlike `grantPlanEntitlements`, this INCREMENTS the balance (top-ups stack)
+ * and deliberately does NOT touch `stt_last_plan_id` — the auto-renew cron
+ * selects rows by last-plan id, so a top-up can never be re-charged.
+ */
+export async function grantTopupMinutes(
+  supabase: ReturnType<typeof createServiceRoleSupabaseClient>,
+  metadata: PaystackMetadata
+): Promise<{ activated: "stt_topup"; planId: SttTopupId; secondsAdded: number }> {
+  const plan = STT_TOPUP_PLANS.find((p) => p.id === metadata.plan_id)!;
+
+  // Atomic SQL increment (jotter.add_purchased_seconds, service_role only):
+  // inserts the row if missing, adds to the existing balance otherwise.
+  const { error } = await supabase.rpc("add_purchased_seconds", {
+    input_user_id: metadata.user_id,
+    input_seconds: plan.seconds
+  });
+
+  if (error) {
+    throw new Error(`Could not credit Extra Minutes: ${error.message}`);
+  }
+
+  return { activated: "stt_topup", planId: plan.id, secondsAdded: plan.seconds };
 }
 
 /* -------------------------------------------------------------------------- */

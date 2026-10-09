@@ -118,6 +118,53 @@ export const AI_SUBSCRIPTION_PLANS: AiSubscriptionPlan[] = [
 ];
 
 /* -------------------------------------------------------------------------- */
+/* 3. Speech-to-Text Extra Minutes top-ups (never expire)                     */
+/* -------------------------------------------------------------------------- */
+
+export type SttTopupId =
+  | "stt_topup_1h"
+  | "stt_topup_2h"
+  | "stt_topup_3h"
+  | "stt_topup_4h"
+  | "stt_topup_5h"
+  | "stt_topup_6h"
+  | "stt_topup_7h"
+  | "stt_topup_8h"
+  | "stt_topup_9h"
+  | "stt_topup_10h";
+
+export type SttTopupPlan = {
+  id: SttTopupId;
+  name: string;
+  /** Hours of recording time granted. */
+  hours: number;
+  /** Duration the top-up grants, in seconds. */
+  seconds: number;
+  /** Price in Ghana cedis. Top-ups are GHS-only for now. */
+  priceGhs: number;
+  description: string;
+};
+
+/**
+ * Extra Minutes top-ups for Speech-to-Text: 15 GHS per hour, 1–10 hours.
+ * Purchased minutes NEVER expire and stack with any plan. They are consumed
+ * after active plan minutes but before the free lifetime allowance.
+ *
+ * GHS only for now — the plans UI hides top-ups from non-African visitors
+ * until USD prices are decided.
+ */
+export const STT_TOPUP_PLANS: SttTopupPlan[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
+  (hours) => ({
+    id: `stt_topup_${hours}h` as SttTopupId,
+    name: `${hours} hour${hours > 1 ? "s" : ""}`,
+    hours,
+    seconds: hours * 60 * 60,
+    priceGhs: hours * 15,
+    description: "Never expires. Stacks with any plan."
+  })
+);
+
+/* -------------------------------------------------------------------------- */
 /* Geo-based pricing helpers                                                  */
 /* -------------------------------------------------------------------------- */
 

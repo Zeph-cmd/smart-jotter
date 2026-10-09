@@ -44,12 +44,17 @@ for production release on Google Play).
 
 - Notes, export, Learning Mode: free forever.
 - 60 free AI starter credits (one-time, at signup).
-- 60 minutes speech-to-text (one-time, lifetime — not monthly).
+- 45 minutes speech-to-text (one-time, lifetime — not monthly).
 
 ## Paid Plans (two separate tracks — one does NOT unlock the other)
 
 **Speech-to-Text** (recording time): Plan A — 4 hours, 1 week — 50 GHS / $20
 USD. Plan B — 8 hours, 1 month — 100 GHS / $40 USD.
+
+**Extra Minutes top-up** (Speech-to-Text): 15 GHS per hour — 1h to 10h
+(15–150 GHS). Never expire, stack with any plan. Ghana cedis only for now.
+Time is used in this order: plan minutes first, then top-up minutes, then
+free minutes.
 
 **AI Writing Assist** (credits): AI Plan A — 100 credits, 1 week — 50 GHS /
 $20 USD. AI Plan B — 200 credits, 1 month — 100 GHS / $40 USD.
@@ -91,8 +96,9 @@ manually anytime.
 - **Can't log in:** correct email? Google users → use Google button. Reset
   password. Try another browser / clear cache. Persist → escalate.
 - **Out of credits:** check /usage. Free = 60 one-time. Need more → AI plan.
-- **Out of STT time:** free = 60 min lifetime. Plan active? Check validity
-  window on /usage. Wrong after payment → escalate.
+- **Out of STT time:** free = 45 min lifetime. Top-up minutes never expire —
+  check /usage. Plan active? Check validity window on /usage. Wrong after
+  payment → escalate.
 - **Lost a note:** reopen it (autosave). Search semantically. Truly gone →
   escalate.
 - **App/site error:** hard refresh, try another browser. Persist → escalate

@@ -6,6 +6,7 @@ import {
 } from "@/lib/server/auth";
 import { handleRouteError } from "@/lib/server/route";
 import { getAiCredits, getUsageByFeature } from "@/lib/ai/credits";
+import { getAudioQuotaSummary } from "@/lib/ai/entitlements";
 import { FEATURE_CREDIT_COSTS, FEATURE_LABELS, type AiFeature } from "@/lib/credits";
 
 /**
@@ -21,14 +22,15 @@ export async function GET() {
     const userId = requireUserId(user);
     await requireTermsAccepted(supabase, userId);
 
-    const [credits, usageByFeature, entitlementsRow] = await Promise.all([
+    const [credits, usageByFeature, entitlementsRow, stt] = await Promise.all([
       getAiCredits(supabase, userId),
       getUsageByFeature(supabase, userId),
       supabase
         .from("sj_user_entitlements")
         .select("auto_renew_ai, auto_renew_stt")
         .eq("user_id", userId)
-        .maybeSingle()
+        .maybeSingle(),
+      getAudioQuotaSummary(supabase, userId)
     ]);
 
     // Build a stable, full table of every feature (even those with 0 usage)
@@ -53,6 +55,16 @@ export async function GET() {
       creditsRemaining: credits.remaining,
       autoRenewAi: entitlementsRow.data?.auto_renew_ai ?? true,
       autoRenewStt: entitlementsRow.data?.auto_renew_stt ?? true,
+      stt: {
+        tier: stt.tier,
+        remainingMinutes: stt.remainingMinutes,
+        limitMinutes: stt.limitMinutes,
+        canRecord: stt.canRecord,
+        subscriptionStatus: stt.subscriptionStatus,
+        subscriptionExpiry: stt.subscriptionExpiry,
+        freeMinutesRemaining: stt.freeMinutesRemaining,
+        purchasedMinutesRemaining: stt.purchasedMinutesRemaining
+      },
       featureRows
     });
   } catch (error) {

@@ -101,7 +101,7 @@ export async function POST(request: Request) {
         ? reportedDuration
         : Math.min(MAX_RECORDING_SECONDS, Math.round(candidate.size / 1536));
 
-    // Enforce the quota (free-tier 90 min OR subscription allotment) before
+    // Enforce the quota (free-tier 45 min OR subscription allotment) before
     // spending the Deepgram call. Returns the active access/tier.
     const access = await enforceAudioQuota(supabase, userId, durationSeconds);
 
