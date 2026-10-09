@@ -43,7 +43,7 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Need more recording time before my plan ends?",
     answer:
-      "Yes — you can buy Extra Minutes for Speech-to-Text without changing your plan. They cost 15 GHS per hour, from 1 hour up to 10 hours, they never expire, and they stack with any plan. Smart Jotter always uses your plan minutes first, then your Extra Minutes, then your free allowance. Extra Minutes are priced in Ghana cedis only for now."
+      "Yes — you can buy Extra Minutes for Speech-to-Text without changing your plan. They cost 15 GHS per hour (6 USD per hour for visitors outside Africa), from 1 hour up to 10 hours, they never expire, and they stack with any plan. Smart Jotter always uses your plan minutes first, then your Extra Minutes, then your free allowance."
   },
   {
     question: "Does my plan auto-renew?",

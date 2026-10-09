@@ -180,8 +180,7 @@ function getPlanPrices(
     if (!plan) {
       throw new Error(`Unknown Speech-to-Text top-up: ${planId}`);
     }
-    // Top-ups are GHS-only for now; no USD equivalent is offered.
-    return { priceGhs: plan.priceGhs, priceUsd: plan.priceGhs };
+    return { priceGhs: plan.priceGhs, priceUsd: plan.priceUsd };
   }
 
   const plan = AI_SUBSCRIPTION_PLANS.find((p) => p.id === planId);
@@ -251,14 +250,6 @@ export function assertAmountMatches(
 
   if (currency !== "GHS" && currency !== "USD") {
     throw new Error(`Currency mismatch: paid in ${currency}, expected GHS or USD.`);
-  }
-
-  // Top-ups are GHS-only: reject any USD payment carrying a top-up id so a
-  // forged metadata pair can never activate minutes at the wrong price.
-  if (metadata.plan_type === "stt_topup" && currency !== "GHS") {
-    throw new Error(
-      `Currency mismatch: Extra Minutes are charged in GHS, paid in ${currency}.`
-    );
   }
 
   const expectedMajor = currency === "USD" ? prices.priceUsd : prices.priceGhs;

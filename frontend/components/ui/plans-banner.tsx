@@ -147,25 +147,23 @@ export function PlansBanner() {
             <hr className="border-emerald-500/40" />
 
             {/* ───────────────────────────────────────────────────────────── */}
-            {/* 1b. Speech-to-Text Extra Minutes (GHS only, never expire)     */}
+            {/* 1b. Speech-to-Text Extra Minutes (never expire)              */}
             {/* ───────────────────────────────────────────────────────────── */}
-            {currency === "GHS" ? (
-              <section>
-                <h2 className="text-center text-xl font-bold tracking-tight sm:text-2xl">
-                  Extra Minutes
-                </h2>
-                <p className="mt-2 text-center text-sm text-emerald-50 sm:text-base">
-                  Need more recording time? Extra Minutes never expire and
-                  stack with any plan. 15 GHS per hour.
-                </p>
+            <section>
+              <h2 className="text-center text-xl font-bold tracking-tight sm:text-2xl">
+                Extra Minutes
+              </h2>
+              <p className="mt-2 text-center text-sm text-emerald-50 sm:text-base">
+                Need more recording time? Extra Minutes never expire and stack
+                with any plan. {currency === "USD" ? "$6" : "15 GHS"} per hour.
+              </p>
 
-                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                  {STT_TOPUP_PLANS.map((topup) => (
-                    <TopUpCard key={topup.id} topup={topup} />
-                  ))}
-                </div>
-              </section>
-            ) : null}
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {STT_TOPUP_PLANS.map((topup) => (
+                  <TopUpCard key={topup.id} topup={topup} currency={currency} />
+                ))}
+              </div>
+            </section>
 
             {/* Divider */}
             <hr className="border-emerald-500/40" />
@@ -380,12 +378,21 @@ function PlanCard({
 }
 
 /* -------------------------------------------------------------------------- */
-/* Top-up card: Extra Minutes (Speech-to-Text, GHS only, never expire)        */
+/* Top-up card: Extra Minutes (Speech-to-Text, never expire)                  */
 /* -------------------------------------------------------------------------- */
 
-function TopUpCard({ topup }: { topup: (typeof STT_TOPUP_PLANS)[number] }) {
+function TopUpCard({
+  topup,
+  currency
+}: {
+  topup: (typeof STT_TOPUP_PLANS)[number];
+  currency: PricingCurrency;
+}) {
   const { user } = useAuth();
   const [status, setStatus] = useState<PaymentStatus>({ state: "idle" });
+
+  const price = getPlanPrice(topup, currency);
+  const display = formatPlanPrice(topup, currency);
 
   async function handlePay() {
     if (!user) {
@@ -401,8 +408,8 @@ function TopUpCard({ topup }: { topup: (typeof STT_TOPUP_PLANS)[number] }) {
     try {
       const result = await payAndVerify({
         email: user.email ?? "",
-        amount: topup.priceGhs,
-        currency: "GHS",
+        amount: price,
+        currency,
         metadata: {
           user_id: user.id,
           plan_type: "stt_topup",
@@ -426,7 +433,7 @@ function TopUpCard({ topup }: { topup: (typeof STT_TOPUP_PLANS)[number] }) {
     <div className="flex flex-col rounded-2xl border border-emerald-400/50 bg-white/10 p-4 backdrop-blur-sm">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold">{topup.name}</h3>
-        <span className="text-lg font-bold">{topup.priceGhs} GHS</span>
+        <span className="text-lg font-bold">{display}</span>
       </div>
       <span className="mt-2 w-fit rounded-full bg-emerald-900/60 px-2 py-0.5 text-[11px] font-medium text-emerald-50">
         Never expires
@@ -449,7 +456,7 @@ function TopUpCard({ topup }: { topup: (typeof STT_TOPUP_PLANS)[number] }) {
         disabled={status.state === "paying"}
         className="mt-3 w-full rounded-lg bg-white px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {status.state === "paying" ? "Processing…" : `Pay ${topup.priceGhs} GHS`}
+        {status.state === "paying" ? "Processing…" : `Pay ${display}`}
       </button>
     </div>
   );

@@ -140,18 +140,18 @@ export type SttTopupPlan = {
   hours: number;
   /** Duration the top-up grants, in seconds. */
   seconds: number;
-  /** Price in Ghana cedis. Top-ups are GHS-only for now. */
+  /** Price in Ghana cedis. */
   priceGhs: number;
+  /** USD equivalent charged to users outside Africa (fixed rate). */
+  priceUsd: number;
   description: string;
 };
 
 /**
- * Extra Minutes top-ups for Speech-to-Text: 15 GHS per hour, 1–10 hours.
- * Purchased minutes NEVER expire and stack with any plan. They are consumed
- * after active plan minutes but before the free lifetime allowance.
- *
- * GHS only for now — the plans UI hides top-ups from non-African visitors
- * until USD prices are decided.
+ * Extra Minutes top-ups for Speech-to-Text: 15 GHS per hour (6 USD per hour
+ * outside Africa), 1–10 hours. Purchased minutes NEVER expire and stack with
+ * any plan. They are consumed after active plan minutes but before the free
+ * lifetime allowance.
  */
 export const STT_TOPUP_PLANS: SttTopupPlan[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
   (hours) => ({
@@ -160,6 +160,7 @@ export const STT_TOPUP_PLANS: SttTopupPlan[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].m
     hours,
     seconds: hours * 60 * 60,
     priceGhs: hours * 15,
+    priceUsd: hours * 6,
     description: "Never expires. Stacks with any plan."
   })
 );

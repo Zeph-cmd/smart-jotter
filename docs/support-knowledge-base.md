@@ -51,8 +51,8 @@ for production release on Google Play).
 **Speech-to-Text** (recording time): Plan A — 4 hours, 1 week — 50 GHS / $20
 USD. Plan B — 8 hours, 1 month — 100 GHS / $40 USD.
 
-**Extra Minutes top-up** (Speech-to-Text): 15 GHS per hour — 1h to 10h
-(15–150 GHS). Never expire, stack with any plan. Ghana cedis only for now.
+**Extra Minutes top-up** (Speech-to-Text): 15 GHS per hour / $6 USD per
+hour — 1h to 10h (15–150 GHS / $6–$60). Never expire, stack with any plan.
 Time is used in this order: plan minutes first, then top-up minutes, then
 free minutes.
 
@@ -60,7 +60,8 @@ free minutes.
 $20 USD. AI Plan B — 200 credits, 1 month — 100 GHS / $40 USD.
 
 **Geo pricing:** African visitors see GHS; everyone else sees USD (fixed:
-50 GHS = $20, 100 GHS = $40). Automatic by location; plan contents identical.
+50 GHS = $20, 100 GHS = $40, 15 GHS = $6). Automatic by location; plan
+contents identical.
 
 **Rollover:** none — unused credits and unused plan time end at the plan's
 end date, on every plan.
