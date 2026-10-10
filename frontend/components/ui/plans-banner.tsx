@@ -112,6 +112,13 @@ export function PlansBanner() {
               Subscribe to either, both, or neither.
             </p>
 
+            {/* Currency-conversion reassurance */}
+            <p className="-mt-4 text-center text-xs text-emerald-50/80">
+              {currency === "USD"
+                ? "Prices shown in USD — if your card is in another currency, it's converted automatically at checkout. You can subscribe from anywhere."
+                : "Prices shown in Ghana cedis. International visitors see USD — any other card currency is converted automatically at checkout."}
+            </p>
+
             {/* ───────────────────────────────────────────────────────────── */}
             {/* 1. Speech-to-Text Plans                                          */}
             {/* ───────────────────────────────────────────────────────────── */}
@@ -155,7 +162,7 @@ export function PlansBanner() {
               </h2>
               <p className="mt-2 text-center text-sm text-emerald-50 sm:text-base">
                 Need more recording time? Extra Minutes never expire and stack
-                with any plan. {currency === "USD" ? "$6" : "15 GHS"} per hour.
+                with any plan. {currency === "USD" ? "$2" : "15 GHS"} per hour.
               </p>
 
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

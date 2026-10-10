@@ -48,20 +48,21 @@ for production release on Google Play).
 
 ## Paid Plans (two separate tracks — one does NOT unlock the other)
 
-**Speech-to-Text** (recording time): Plan A — 4 hours, 1 week — 50 GHS / $20
-USD. Plan B — 8 hours, 1 month — 100 GHS / $40 USD.
+**Speech-to-Text** (recording time): Plan A — 4 hours, 1 week — 50 GHS / $6
+USD. Plan B — 8 hours, 1 month — 100 GHS / $12 USD.
 
-**Extra Minutes top-up** (Speech-to-Text): 15 GHS per hour / $6 USD per
-hour — 1h to 10h (15–150 GHS / $6–$60). Never expire, stack with any plan.
+**Extra Minutes top-up** (Speech-to-Text): 15 GHS per hour / $2 USD per
+hour — 1h to 10h (15–150 GHS / $2–$20). Never expire, stack with any plan.
 Time is used in this order: plan minutes first, then top-up minutes, then
 free minutes.
 
 **AI Writing Assist** (credits): AI Plan A — 100 credits, 1 week — 50 GHS /
-$20 USD. AI Plan B — 200 credits, 1 month — 100 GHS / $40 USD.
+$6 USD. AI Plan B — 200 credits, 1 month — 100 GHS / $12 USD.
 
 **Geo pricing:** African visitors see GHS; everyone else sees USD (fixed:
-50 GHS = $20, 100 GHS = $40, 15 GHS = $6). Automatic by location; plan
-contents identical.
+50 GHS = $6, 100 GHS = $12, 15 GHS = $2). Automatic by location; plan
+contents identical. A card in another currency is converted automatically
+at checkout — anyone can subscribe from anywhere.
 
 **Rollover:** none — unused credits and unused plan time end at the plan's
 end date, on every plan.

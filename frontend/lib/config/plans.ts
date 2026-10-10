@@ -44,7 +44,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: "plan_a",
     name: "Plan A",
     priceGhs: 50,
-    priceUsd: 20,
+    priceUsd: 6,
     durationSeconds: 4 * 60 * 60, // 4 hours
     durationLabel: "4 hours",
     validityDays: 7,
@@ -55,7 +55,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: "plan_b",
     name: "Plan B",
     priceGhs: 100,
-    priceUsd: 40,
+    priceUsd: 12,
     durationSeconds: 8 * 60 * 60, // 8 hours
     durationLabel: "8 hours",
     validityDays: 30,
@@ -99,7 +99,7 @@ export const AI_SUBSCRIPTION_PLANS: AiSubscriptionPlan[] = [
     id: "ai_plan_a",
     name: "AI Plan A",
     priceGhs: 50,
-    priceUsd: 20,
+    priceUsd: 6,
     credits: 100,
     validityDays: 7,
     validityLabel: "1 week",
@@ -109,7 +109,7 @@ export const AI_SUBSCRIPTION_PLANS: AiSubscriptionPlan[] = [
     id: "ai_plan_b",
     name: "AI Plan B",
     priceGhs: 100,
-    priceUsd: 40,
+    priceUsd: 12,
     credits: 200,
     validityDays: 30,
     validityLabel: "1 month",
@@ -148,7 +148,7 @@ export type SttTopupPlan = {
 };
 
 /**
- * Extra Minutes top-ups for Speech-to-Text: 15 GHS per hour (6 USD per hour
+ * Extra Minutes top-ups for Speech-to-Text: 15 GHS per hour (2 USD per hour
  * outside Africa), 1–10 hours. Purchased minutes NEVER expire and stack with
  * any plan. They are consumed after active plan minutes but before the free
  * lifetime allowance.
@@ -160,7 +160,7 @@ export const STT_TOPUP_PLANS: SttTopupPlan[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].m
     hours,
     seconds: hours * 60 * 60,
     priceGhs: hours * 15,
-    priceUsd: hours * 6,
+    priceUsd: hours * 2,
     description: "Never expires. Stacks with any plan."
   })
 );
