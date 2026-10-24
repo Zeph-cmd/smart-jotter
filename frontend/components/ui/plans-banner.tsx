@@ -183,8 +183,8 @@ export function PlansBanner() {
                 AI Writing Assist Plans
               </h2>
               <p className="mt-2 text-center text-sm text-emerald-50 sm:text-base">
-                Credits for Improve, Explain, Semantic Search & Ask Your
-                Notes. Free starter grant is 60 credits.
+                Credits for Improve, Explain, Expand, Semantic Search & Ask
+                Your Notes. Free starter grant is 60 credits.
               </p>
 
               <div className="mt-5 grid gap-4 sm:grid-cols-2">

@@ -20,7 +20,7 @@ export type RelatedNote = {
   title: string;
 };
 
-export type SuggestionAction = "explain" | "improve";
+export type SuggestionAction = "explain" | "improve" | "expand";
 
 export type FlashcardDifficulty = "easy" | "medium" | "hard";
 

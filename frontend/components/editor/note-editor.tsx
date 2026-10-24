@@ -24,7 +24,8 @@ const ACTIONS: Array<{
   label: string;
 }> = [
   { action: "explain", label: "Explain" },
-  { action: "improve", label: "Improve" }
+  { action: "improve", label: "Improve" },
+  { action: "expand", label: "Expand" }
 ];
 
 export function NoteEditor({
@@ -106,7 +107,8 @@ export function NoteEditor({
           ))}
         </div>
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          AI tools use credits (1 each). You've got 60 free credits as a limited
+          AI tools use credits — Improve &amp; Explain cost 1, Expand costs 2
+          (adds ~100 words). You've got 60 free credits as a limited
           early-access gift — more available via an{" "}
           <Link href="/usage" className="font-medium text-accent underline hover:text-accent/80">
             AI Writing Assist plan

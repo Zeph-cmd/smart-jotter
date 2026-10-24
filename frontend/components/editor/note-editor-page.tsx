@@ -293,6 +293,15 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
       return;
     }
 
+    // Expand only generates the added words — append them to the note
+    // instead of replacing it.
+    if (suggestionAction === "expand") {
+      setContent((current) =>
+        current.trim() ? `${current.trimEnd()}\n\n${finalContent.trim()}` : finalContent
+      );
+      return;
+    }
+
     setContent(finalContent);
   };
 

@@ -33,7 +33,7 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: "What are AI credits?",
     answer:
-      "AI credits are the units consumed by AI-powered features: Improve, Explain, Semantic Search, and Flashcard generation each cost 1 credit per use; Ask Your Notes costs 2. Paid plans give you a fresh bundle of credits — AI Plan A gives 100 credits for 1 week (50 GHS / $6 USD) and AI Plan B gives 200 credits for 1 month (100 GHS / $12 USD). Track everything on the Usage page."
+      "AI credits are the units consumed by AI-powered features: Improve, Explain, Semantic Search, and Flashcard generation each cost 1 credit per use; Ask Your Notes costs 2; and Expand costs 2 credits per tap, adding about 100 words to your note. Paid plans give you a fresh bundle of credits — AI Plan A gives 100 credits for 1 week (50 GHS / $6 USD) and AI Plan B gives 200 credits for 1 month (100 GHS / $12 USD). Track everything on the Usage page."
   },
   {
     question: "Do unused credits roll over?",

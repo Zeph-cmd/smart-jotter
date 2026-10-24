@@ -14,6 +14,7 @@
 export type AiFeature =
   | "improve"
   | "explain"
+  | "expand"
   | "semantic_search"
   | "ask_notes"
   | "flashcards";
@@ -25,6 +26,7 @@ export type AiFeature =
 export const FEATURE_CREDIT_COSTS: Record<AiFeature, number> = {
   improve: 1,
   explain: 1,
+  expand: 2,
   semantic_search: 1,
   ask_notes: 2,
   flashcards: 1
@@ -40,7 +42,7 @@ export function getFeatureCost(feature: AiFeature): number {
 }
 
 /**
- * Maps the editor suggestion actions (improve / explain) to their
+ * Maps the editor suggestion actions (improve / explain / expand) to their
  * credit-bearing AI features. Unknown actions map to null and are skipped by
  * the credit gate.
  */
@@ -52,6 +54,8 @@ export function suggestionActionToFeature(
       return "improve";
     case "explain":
       return "explain";
+    case "expand":
+      return "expand";
     default:
       return null;
   }
@@ -63,6 +67,7 @@ export function suggestionActionToFeature(
 export const FEATURE_LABELS: Record<AiFeature, string> = {
   improve: "Improve",
   explain: "Explain",
+  expand: "Expand",
   semantic_search: "Semantic Search",
   ask_notes: "Ask Your Notes",
   flashcards: "Flashcards"

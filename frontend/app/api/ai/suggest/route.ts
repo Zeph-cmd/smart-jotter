@@ -16,6 +16,12 @@ import {
 
 const MAX_CONTENT_LENGTH = 20000;
 
+/**
+ * Expand sends the note as input and charges a flat 2 credits, so input size
+ * is capped tighter than the other actions to bound the per-tap API cost.
+ */
+const EXPAND_MAX_CONTENT_LENGTH = 6000;
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     action?: SuggestionAction;
@@ -25,7 +31,7 @@ export async function POST(request: Request) {
   const action = body?.action;
   const content = body?.content?.trim() ?? "";
 
-  if (!action || !["explain", "improve"].includes(action)) {
+  if (!action || !["explain", "improve", "expand"].includes(action)) {
     return NextResponse.json(
       { error: "Valid action is required." },
       { status: 400 }
@@ -39,9 +45,17 @@ export async function POST(request: Request) {
     );
   }
 
-  if (content.length > MAX_CONTENT_LENGTH) {
+  const maxLength =
+    action === "expand" ? EXPAND_MAX_CONTENT_LENGTH : MAX_CONTENT_LENGTH;
+
+  if (content.length > maxLength) {
     return NextResponse.json(
-      { error: "Content is too long. Please shorten your note." },
+      {
+        error:
+          action === "expand"
+            ? "Note is too long to expand. Start a new note, or use Ask Your Notes instead."
+            : "Content is too long. Please shorten your note."
+      },
       { status: 400 }
     );
   }
