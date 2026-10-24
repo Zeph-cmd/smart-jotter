@@ -3,7 +3,10 @@ import { openAIRequest } from "@/lib/ai/openai";
 import { semanticSearch } from "@/lib/search/semantic-search";
 import type { Note } from "@/types/note";
 
-const ANSWER_MODEL = "gpt-4o-mini";
+// GPT-6 Luna with reasoning_effort "none" — successor to gpt-4o-mini (retired
+// Jan 14, 2027). See lib/ai/suggestions.ts for the rationale.
+const ANSWER_MODEL = "gpt-6-luna";
+const REASONING_EFFORT = "none";
 
 type ChatCompletionsResponse = {
   choices: Array<{
@@ -40,6 +43,7 @@ export async function askYourNotes(
 
   const response = await openAIRequest<ChatCompletionsResponse>("/chat/completions", {
     model: ANSWER_MODEL,
+    reasoning_effort: REASONING_EFFORT,
     temperature: 0.2,
     messages: [
       {

@@ -8,7 +8,10 @@ import type {
   ReviewPerformance
 } from "@/types/note";
 
-const FLASHCARD_MODEL = "gpt-4o-mini";
+// GPT-6 Luna with reasoning_effort "none" — successor to gpt-4o-mini (retired
+// Jan 14, 2027). See lib/ai/suggestions.ts for the rationale.
+const FLASHCARD_MODEL = "gpt-6-luna";
+const REASONING_EFFORT = "none";
 
 type ChatCompletionsResponse = {
   choices: Array<{
@@ -222,6 +225,7 @@ function calculateNextReview(performance: ReviewPerformance) {
 async function requestFlashcardsFromAI(title: string, content: string) {
   const response = await openAIRequest<ChatCompletionsResponse>("/chat/completions", {
     model: FLASHCARD_MODEL,
+    reasoning_effort: REASONING_EFFORT,
     temperature: 0.3,
     messages: [
       {

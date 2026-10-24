@@ -1,7 +1,10 @@
 import { openAIRequest } from "@/lib/ai/openai";
 import type { FlashcardPair } from "@/types/note";
 
-const FLASHCARDS_MODEL = "gpt-4o-mini";
+// GPT-6 Luna with reasoning_effort "none" — successor to gpt-4o-mini (retired
+// Jan 14, 2027). See lib/ai/suggestions.ts for the rationale.
+const FLASHCARDS_MODEL = "gpt-6-luna";
+const REASONING_EFFORT = "none";
 
 type ChatCompletionsResponse = {
   choices: Array<{
@@ -34,6 +37,7 @@ export async function generateFlashcardsPreview(content: string): Promise<
     "/chat/completions",
     {
       model: FLASHCARDS_MODEL,
+      reasoning_effort: REASONING_EFFORT,
       temperature: 0.4,
       messages: [
         {

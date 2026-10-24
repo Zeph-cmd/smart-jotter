@@ -1,7 +1,11 @@
 import { openAIRequest } from "@/lib/ai/openai";
 import type { SuggestionAction } from "@/types/note";
 
-const SUGGESTION_MODEL = "gpt-4o-mini";
+// GPT-6 Luna with reasoning_effort "none" is OpenAI's designated successor to
+// gpt-4o-mini (retired Jan 14, 2027): same fast, non-reasoning profile, lower
+// cost. With effort "none", Chat Completions + temperature remain supported.
+const SUGGESTION_MODEL = "gpt-6-luna";
+const REASONING_EFFORT = "none";
 
 type ChatCompletionsResponse = {
   choices: Array<{
@@ -32,6 +36,7 @@ export async function generateSuggestion(input: {
     "/chat/completions",
     {
       model: SUGGESTION_MODEL,
+      reasoning_effort: REASONING_EFFORT,
       temperature: 0.4,
       messages: [
         {
