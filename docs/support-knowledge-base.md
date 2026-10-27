@@ -32,6 +32,11 @@ for production release on Google Play).
 - **Semantic Search** (1 credit) — search notes by meaning, not keywords.
 - **Ask Your Notes** (2 credits) — answers from ONLY the user's own notes.
 - **Improve / Explain** (1 credit each) — polish or unpack text.
+- **Expand** (2 credits per tap) — adds ~100 words continuing the note.
+- **Image Extract** (2 credits) / **PDF Extract** (1 credit) — upload an
+  image or text-based PDF, its text becomes a note. PDFs: max 10MB / 20
+  pages; scanned PDFs rejected (use page images). "Import image/PDF" on the
+  notes page, or "Extract & append" in the editor.
 - **Flashcards** (1 credit) — turns a note into study cards; review them in
   **Learning Mode** (spaced repetition + quizzes).
 - **Speech-to-Text** — dictate into notes; transcribes live.

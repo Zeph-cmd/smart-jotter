@@ -17,7 +17,9 @@ export type AiFeature =
   | "expand"
   | "semantic_search"
   | "ask_notes"
-  | "flashcards";
+  | "flashcards"
+  | "image_extract"
+  | "pdf_extract";
 
 /**
  * Credit cost per AI feature. Adjust these values here and every gate, log,
@@ -29,7 +31,9 @@ export const FEATURE_CREDIT_COSTS: Record<AiFeature, number> = {
   expand: 2,
   semantic_search: 1,
   ask_notes: 2,
-  flashcards: 1
+  flashcards: 1,
+  image_extract: 2,
+  pdf_extract: 1
 };
 
 /**
@@ -70,5 +74,7 @@ export const FEATURE_LABELS: Record<AiFeature, string> = {
   expand: "Expand",
   semantic_search: "Semantic Search",
   ask_notes: "Ask Your Notes",
-  flashcards: "Flashcards"
+  flashcards: "Flashcards",
+  image_extract: "Image Extract",
+  pdf_extract: "PDF Extract"
 };

@@ -33,7 +33,12 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: "What are AI credits?",
     answer:
-      "AI credits are the units consumed by AI-powered features: Improve, Explain, Semantic Search, and Flashcard generation each cost 1 credit per use; Ask Your Notes costs 2; and Expand costs 2 credits per tap, adding about 100 words to your note. Paid plans give you a fresh bundle of credits — AI Plan A gives 100 credits for 1 week (50 GHS / $6 USD) and AI Plan B gives 200 credits for 1 month (100 GHS / $12 USD). Track everything on the Usage page."
+      "AI credits are the units consumed by AI-powered features: Improve, Explain, Semantic Search, and Flashcard generation each cost 1 credit per use; Ask Your Notes and Expand cost 2 credits per use (Expand adds about 100 words to your note); Image Extract costs 2 credits per image; and PDF Extract costs 1 credit per text-based PDF. Paid plans give you a fresh bundle of credits — AI Plan A gives 100 credits for 1 week (50 GHS / $6 USD) and AI Plan B gives 200 credits for 1 month (100 GHS / $12 USD). Track everything on the Usage page."
+  },
+  {
+    question: "Can I import text from an image or PDF?",
+    answer:
+      "Yes — use the Import image/PDF button on your notes page, or Extract & append while editing a note. Screenshots and photos of text work great (2 credits per image), and text-based PDFs cost just 1 credit. The extracted text becomes a normal note you can refine, expand, or turn into flashcards. Scanned PDFs without a text layer aren't supported — export their pages as images and upload those instead."
   },
   {
     question: "Do unused credits roll over?",

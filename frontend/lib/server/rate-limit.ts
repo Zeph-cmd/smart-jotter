@@ -129,6 +129,8 @@ export const RATE_LIMITS = {
   ai: { limit: 20, windowMs: 60 * 1000 },
   /** Audio transcription — 10 per user per 60s (heavy cost). */
   transcribe: { limit: 10, windowMs: 60 * 1000 },
+  /** Image/PDF text extraction — 10 per user per 60s (heavy cost). */
+  extract: { limit: 10, windowMs: 60 * 1000 },
   /** Account deletion — 2 attempts per user per 15 min. */
   accountDeletion: { limit: 2, windowMs: 15 * 60 * 1000 }
 } as const;

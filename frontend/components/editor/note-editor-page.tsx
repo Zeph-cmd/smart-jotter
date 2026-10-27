@@ -10,6 +10,8 @@ import { RelatedNotes } from "@/components/editor/related-notes";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
   ApiRequestError,
+  downscaleImage,
+  extractFromFileRequest,
   fetchNoteRequest,
   fetchRelatedNotesRequest,
   requestFlashcardsPreview,
@@ -33,6 +35,10 @@ const SuggestionPanel = dynamic(
 );
 
 const AUTOSAVE_DELAY_MS = 1400;
+
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
 type NoteEditorPageProps = {
   noteId: string;
@@ -72,6 +78,9 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
   const [isFlashcardsLoading, setIsFlashcardsLoading] = useState(false);
   const [hasLoadedNote, setHasLoadedNote] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
+  const extractInputRef = useRef<HTMLInputElement>(null);
+  const [isExtractingFile, setIsExtractingFile] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
   const lastSavedRef = useRef<DraftPayload>({ title: "", content: "" });
 
   const draftKey = useMemo(() => `smart-jotter:draft:${noteId}`, [noteId]);
@@ -286,6 +295,46 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
     }
   };
 
+  const handleExtractFilePicked = async (candidate: File) => {
+    setExtractError(null);
+
+    const isImage = ALLOWED_IMAGE_TYPES.has(candidate.type);
+    if (!isImage && candidate.type !== "application/pdf") {
+      setExtractError("Unsupported file type. Please choose a JPG, PNG, WebP image, or a PDF.");
+      return;
+    }
+    if (isImage && candidate.size > MAX_IMAGE_BYTES) {
+      setExtractError("Image is too large (max 5MB).");
+      return;
+    }
+    if (candidate.type === "application/pdf" && candidate.size > MAX_PDF_BYTES) {
+      setExtractError("PDF is too large (max 10MB).");
+      return;
+    }
+
+    setIsExtractingFile(true);
+
+    try {
+      const uploadFile = isImage ? await downscaleImage(candidate) : candidate;
+      const result = await extractFromFileRequest(uploadFile);
+      // Appends to the open note; autosave persists it moments later.
+      setContent((current) =>
+        current.trim() ? `${current.trimEnd()}\n\n${result.text}` : result.text
+      );
+    } catch (caughtError) {
+      setExtractError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not extract text from this file."
+      );
+    } finally {
+      setIsExtractingFile(false);
+      if (extractInputRef.current) {
+        extractInputRef.current.value = "";
+      }
+    }
+  };
+
   const handleApplySuggestion = (editedSuggestion?: string) => {
     const finalContent = editedSuggestion ?? suggestion;
 
@@ -453,6 +502,26 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
             >
               Learning Mode
             </Link>
+            <button
+              type="button"
+              onClick={() => extractInputRef.current?.click()}
+              disabled={isExtractingFile}
+              className="inline-flex rounded-full border border-line px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              {isExtractingFile ? "Extracting…" : "Extract & append"}
+            </button>
+            <input
+              ref={extractInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="hidden"
+              onChange={(event) => {
+                const candidate = event.target.files?.[0];
+                if (candidate) {
+                  void handleExtractFilePicked(candidate);
+                }
+              }}
+            />
             <a
               href={`${exportBasePath}?format=md`}
               download
@@ -468,6 +537,11 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
               Export .txt
             </a>
           </div>
+          {extractError ? (
+            <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">
+              {extractError}
+            </p>
+          ) : null}
           <div className="mt-5">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
               Note workspace

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthStatus } from "@/components/auth/auth-status";
+import { ExtractDialog } from "@/components/notes/extract-dialog";
 import { NoteForm } from "@/components/note-form";
 import { NoteList } from "@/components/note-list";
 import { ComingSoonOverlay } from "@/components/ui/coming-soon-overlay";
@@ -46,6 +47,7 @@ export function NotesPage() {
   const [displayedNotes, setDisplayedNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showExtract, setShowExtract] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -267,6 +269,13 @@ export function NotesPage() {
               </Link>
               <button
                 type="button"
+                onClick={() => setShowExtract((currentValue) => !currentValue)}
+                className="inline-flex items-center justify-center rounded-full border border-line bg-white px-4 py-2 text-sm font-medium text-ink transition hover:border-accent hover:text-accent dark:bg-slate-900 dark:text-slate-100 dark:hover:border-accent dark:hover:text-accent"
+              >
+                {showExtract ? "Close import" : "Import image/PDF"}
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowForm((currentValue) => !currentValue)}
                 className="inline-flex items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
               >
@@ -274,6 +283,15 @@ export function NotesPage() {
               </button>
             </div>
           </div>
+
+          {showExtract ? (
+            <div className="mt-8 border-t border-line pt-6">
+              <ExtractDialog
+                onCreated={handleNoteCreated}
+                onCancel={() => setShowExtract(false)}
+              />
+            </div>
+          ) : null}
 
           {showForm ? (
             <div className="mt-8 border-t border-line pt-6">

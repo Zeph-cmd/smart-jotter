@@ -309,6 +309,102 @@ export async function fetchDueReviewsRequest() {
   };
 }
 
+export type ExtractResponse = {
+  text?: string;
+  source?: "image" | "pdf";
+  pages?: number;
+  error?: string;
+};
+
+export type ExtractResult = {
+  text: string;
+  source: "image" | "pdf";
+  pages?: number;
+};
+
+/**
+ * Client-side image downscale for extraction uploads: anything larger than
+ * ~1.5MB is redrawn to a canvas capped at 2000px on the long edge and
+ * re-encoded as JPEG q0.85. Keeps uploads small and vision costs lower.
+ * Files that can't be drawn (rare formats) are returned unchanged and the
+ * server-side size check becomes the backstop.
+ */
+export async function downscaleImage(file: File): Promise<File> {
+  if (file.type !== "image/jpeg" && file.type !== "image/png" && file.type !== "image/webp") {
+    return file;
+  }
+  if (file.size <= 1.5 * 1024 * 1024) {
+    return file;
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxEdge = Math.max(bitmap.width, bitmap.height);
+    if (maxEdge <= 2000) {
+      return file;
+    }
+
+    const scale = 2000 / maxEdge;
+    const width = Math.round(bitmap.width * scale);
+    const height = Math.round(bitmap.height * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return file;
+    }
+    context.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85)
+    );
+    if (!blob || blob.size >= file.size) {
+      return file;
+    }
+
+    const originalName = file.name.replace(/\.[^.]+$/, "");
+    return new File([blob], `${originalName}.jpg`, { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
+export async function extractFromFileRequest(file: File): Promise<ExtractResult> {
+  const formData = new FormData();
+  formData.append("file", file, file.name || "upload");
+
+  const response = await fetch("/api/ai/extract", {
+    method: "POST",
+    body: formData,
+    cache: "no-store"
+  });
+
+  const data = (await response.json()) as ExtractResponse;
+
+  if (!response.ok) {
+    const message =
+      response.status === 401
+        ? "Please sign in to extract text."
+        : response.status === 402
+          ? data.error ?? "You're out of credits. Subscribe or top up to continue."
+          : data.error ?? "Could not extract text from this file.";
+    throw new Error(message);
+  }
+
+  if (!data.text?.trim()) {
+    throw new Error("Extraction returned no text.");
+  }
+
+  return {
+    text: data.text,
+    source: data.source ?? "image",
+    pages: data.pages
+  };
+}
+
 export async function transcribeAudioRequest(
   audio: Blob | File,
   durationSeconds = 0
