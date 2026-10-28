@@ -333,7 +333,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const loadAgreement = async () => {
       try {
-        const status = await getTermsAgreement(supabase, user.id);
+        const status = await getTermsAgreement();
         if (isMounted) {
           setHasAgreedToTerms(status.agreed);
         }

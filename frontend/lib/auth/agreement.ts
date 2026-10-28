@@ -23,9 +23,10 @@ export type TermsAgreementStatus = {
   agreedAt: string | null;
 };
 
-type AgreementRow = {
-  agreed_to_terms: boolean | null;
-  agreed_to_terms_at: string | null;
+type TermsStatusResponse = {
+  agreed?: boolean;
+  agreedAt?: string | null;
+  error?: string;
 };
 
 type AcceptTermsResponse = {
@@ -36,32 +37,31 @@ type AcceptTermsResponse = {
 };
 
 /**
- * Reads the user's terms-agreement state. Returns { agreed: false } if the row
- * does not exist yet (first-time user) so they are prompted to accept.
+ * Reads the user's terms-agreement state via the server-side GET endpoint
+ * (`/api/auth/accept-terms`), which uses the service_role key. A direct
+ * browser read of sj_user_entitlements could be blocked by RLS/grants and
+ * silently fail to `agreed: false`, making the agreement screen reappear on
+ * every login even after acceptance.
+ *
+ * Returns { agreed: false } if the row does not exist yet (first-time user) so
+ * the user is prompted to accept, and also on network/API failure (fail safe).
  */
-export async function getTermsAgreement(
-  supabase: AppSupabaseClient,
-  userId: string
-): Promise<TermsAgreementStatus> {
+export async function getTermsAgreement(): Promise<TermsAgreementStatus> {
   try {
-    const { data, error } = await supabase
-      .from("sj_user_entitlements")
-      .select("agreed_to_terms, agreed_to_terms_at")
-      .eq("user_id", userId)
-      .maybeSingle();
+    const response = await fetch("/api/auth/accept-terms", {
+      method: "GET",
+      cache: "no-store"
+    });
 
-    if (error) {
-      // Schema may not be applied yet (migration not run) or RLS may block
-      // the read. Fail safe: treat as "not agreed" so the agreement screen
-      // is shown rather than getting stuck on a loading state.
+    if (!response.ok) {
       return { agreed: false, agreedAt: null };
     }
 
-    const row = (data ?? null) as AgreementRow | null;
+    const data = (await response.json()) as TermsStatusResponse;
 
     return {
-      agreed: row?.agreed_to_terms ?? false,
-      agreedAt: row?.agreed_to_terms_at ?? null
+      agreed: data.agreed ?? false,
+      agreedAt: data.agreedAt ?? null
     };
   } catch {
     // Network error, client misconfiguration, etc. — still fail safe.
