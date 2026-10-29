@@ -43,10 +43,12 @@ type AcceptTermsResponse = {
  * silently fail to `agreed: false`, making the agreement screen reappear on
  * every login even after acceptance.
  *
- * Returns { agreed: false } if the row does not exist yet (first-time user) so
- * the user is prompted to accept, and also on network/API failure (fail safe).
+ * Returns the status when the server answered, or **null when the status is
+ * unknown** (network error, 401, 429, 5xx). Callers must treat null as "don't
+ * change current state" — a failed check must never overwrite an acceptance
+ * that was already recorded this session.
  */
-export async function getTermsAgreement(): Promise<TermsAgreementStatus> {
+export async function getTermsAgreement(): Promise<TermsAgreementStatus | null> {
   try {
     const response = await fetch("/api/auth/accept-terms", {
       method: "GET",
@@ -54,7 +56,7 @@ export async function getTermsAgreement(): Promise<TermsAgreementStatus> {
     });
 
     if (!response.ok) {
-      return { agreed: false, agreedAt: null };
+      return null;
     }
 
     const data = (await response.json()) as TermsStatusResponse;
@@ -64,8 +66,8 @@ export async function getTermsAgreement(): Promise<TermsAgreementStatus> {
       agreedAt: data.agreedAt ?? null
     };
   } catch {
-    // Network error, client misconfiguration, etc. — still fail safe.
-    return { agreed: false, agreedAt: null };
+    // Network error, client misconfiguration, etc. — unknown, not "no".
+    return null;
   }
 }
 

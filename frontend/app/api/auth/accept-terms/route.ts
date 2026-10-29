@@ -7,31 +7,30 @@ import {
 } from "@/lib/server/auth";
 import {
   checkRateLimit,
-  getClientIp,
   RATE_LIMITS
 } from "@/lib/server/rate-limit";
 import { ensureAiStarterCredits } from "@/lib/ai/credits";
 
 export async function POST(request: Request) {
-  const ip = getClientIp(request);
-  const { ok, retryAfter } = checkRateLimit(
-    `accept-terms:${ip}`,
-    RATE_LIMITS.signup.limit,
-    RATE_LIMITS.signup.windowMs
-  );
-  if (!ok) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429, headers: { "Retry-After": String(retryAfter) } }
-    );
-  }
-
   let userId: string;
   try {
     const { user } = await requireAuthenticatedClient();
     userId = requireUserId(user);
   } catch (error) {
     return NextResponse.json({ error: "Authentication failed." }, { status: 401 });
+  }
+
+  // Per-user limit (NOT per-IP): shared IP buckets 429'd legitimate users.
+  const { ok, retryAfter } = checkRateLimit(
+    `accept-terms:${userId}`,
+    RATE_LIMITS.termsStatus.limit,
+    RATE_LIMITS.termsStatus.windowMs
+  );
+  if (!ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
   }
 
   const adminClient = createClient(
@@ -83,25 +82,24 @@ export async function POST(request: Request) {
  * even after the user had accepted.
  */
 export async function GET(request: Request) {
-  const ip = getClientIp(request);
-  const { ok, retryAfter } = checkRateLimit(
-    `accept-terms-status:${ip}`,
-    RATE_LIMITS.signup.limit,
-    RATE_LIMITS.signup.windowMs
-  );
-  if (!ok) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429, headers: { "Retry-After": String(retryAfter) } }
-    );
-  }
-
   let userId: string;
   try {
     const { user } = await requireAuthenticatedClient();
     userId = requireUserId(user);
   } catch (error) {
     return NextResponse.json({ error: "Authentication failed." }, { status: 401 });
+  }
+
+  const { ok, retryAfter } = checkRateLimit(
+    `accept-terms-status:${userId}`,
+    RATE_LIMITS.termsStatus.limit,
+    RATE_LIMITS.termsStatus.windowMs
+  );
+  if (!ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
   }
 
   const adminClient = createClient(

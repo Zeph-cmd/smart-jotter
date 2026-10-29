@@ -5,11 +5,10 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode
 } from "react";
-// (useRef not currently needed; bootstrap runs once because the `supabase`
-// dependency is a stable singleton.)
 import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { getTermsAgreement, setTermsAgreed } from "@/lib/auth/agreement";
@@ -307,47 +306,57 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [supabase]);
 
+  // Tracks which user id the agreement state was loaded for, so auth events
+  // that merely swap the user object identity (TOKEN_REFRESHED, repeated
+  // SIGNED_IN) don't re-fire the status request and exhaust rate limits.
+  const agreementLoadedForUserId = useRef<string | null>(null);
+
   // Load the terms-agreement state whenever the signed-in user changes.
   // Reset to null on logout / loading so the gate treats it as "unknown".
   useEffect(() => {
     if (!supabase || !user) {
+      agreementLoadedForUserId.current = null;
       setHasAgreedToTerms(null);
       setIsAgreementLoading(false);
       return;
     }
 
+    // Same user, new object identity — the stored agreement can't have
+    // changed; keep the current state (including a fresh acceptance).
+    if (agreementLoadedForUserId.current === user.id) {
+      return;
+    }
+    agreementLoadedForUserId.current = user.id;
+
     let isMounted = true;
     setIsAgreementLoading(true);
 
     // Safety net: never leave a signed-in user on the agreement loading
-    // skeleton forever, even if the DB read hangs (e.g. network drop). After
-    // this many ms, fall back to "not agreed" so the agreement screen renders
-    // and the user can retry instead of staring at a skeleton.
+    // skeleton forever, even if the DB read hangs (e.g. network drop).
     const AGREEMENT_TIMEOUT_MS = 12_000;
     const agreementTimer = window.setTimeout(() => {
       if (isMounted) {
-        setHasAgreedToTerms(false);
+        // Unknown after timeout: only fall back to "not agreed" if the
+        // status was never resolved. Never overwrite an acceptance recorded
+        // this session.
+        setHasAgreedToTerms((previous) => (previous === null ? false : previous));
         setIsAgreementLoading(false);
       }
     }, AGREEMENT_TIMEOUT_MS);
 
     const loadAgreement = async () => {
-      try {
-        const status = await getTermsAgreement();
-        if (isMounted) {
-          setHasAgreedToTerms(status.agreed);
-        }
-      } catch {
-        if (isMounted) {
-          // Fail closed: treat unknown errors as not-yet-agreed so the user
-          // can still see the agreement screen and retry.
-          setHasAgreedToTerms(false);
-        }
-      } finally {
-        if (isMounted) {
-          setIsAgreementLoading(false);
-        }
+      const status = await getTermsAgreement();
+      if (!isMounted) {
+        return;
       }
+      if (status) {
+        setHasAgreedToTerms(status.agreed);
+      } else {
+        // Status unknown (network/API failure): keep an existing true (e.g.
+        // the user just accepted); default to false only when unresolved.
+        setHasAgreedToTerms((previous) => (previous === null ? false : previous));
+      }
+      setIsAgreementLoading(false);
     };
 
     void loadAgreement();

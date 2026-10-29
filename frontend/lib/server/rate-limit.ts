@@ -132,5 +132,10 @@ export const RATE_LIMITS = {
   /** Image/PDF text extraction — 10 per user per 60s (heavy cost). */
   extract: { limit: 10, windowMs: 60 * 1000 },
   /** Account deletion — 2 attempts per user per 15 min. */
-  accountDeletion: { limit: 2, windowMs: 15 * 60 * 1000 }
+  accountDeletion: { limit: 2, windowMs: 15 * 60 * 1000 },
+  /** Terms-agreement status read / write — 60 per user per 60s. Keyed by
+   *  userId, NOT IP: the auth context re-reads status on auth events
+   *  (INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED), so a tight per-IP bucket
+   *  locked users out with 429s and made the agreement screen reappear. */
+  termsStatus: { limit: 60, windowMs: 60 * 1000 }
 } as const;
