@@ -34,6 +34,20 @@ function raceTimeout<T>(promise: PromiseLike<T>): Promise<T | typeof AUTH_TIMEOU
   ]);
 }
 
+/**
+ * Bounded local-session read. Even `getSession()` can stall: supabase-js
+ * awaits internal initialization that a refresh storm can starve (observed in
+ * production). Every session read in bootstrap MUST be bounded — on timeout we
+ * return null (treated as signed out) rather than awaiting forever.
+ */
+async function getLocalSession(client: SupabaseClient): Promise<Session | null> {
+  const result = await raceTimeout(client.auth.getSession());
+  if (result === AUTH_TIMEOUT) {
+    return null;
+  }
+  return result.data.session ?? null;
+}
+
 type AuthContextValue = {
   isLoading: boolean;
   /** True until we've finished loading the terms-agreement state for a signed-in user. */
@@ -70,8 +84,13 @@ let bootstrapStarted = false;
 // Set on every refresh path and never cleared except when a brand-new sign-in
 // gives us a fresh, valid session.
 let refreshAttempted = false;
-// Prevents overlapping refreshes between bootstrap and the visibility handler.
+
 let isRefreshing = false;
+
+// Circuit-breaker state: rolling window of TOKEN_REFRESHED event timestamps.
+// Survives remounts (module scope) so a churn loop can't hide by remounting.
+let tokenRefreshTimestamps: number[] = [];
+const REFRESH_STORM_THRESHOLD = 5;
 
 type AuthProviderProps = {
   children: ReactNode;
@@ -123,9 +142,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // but never re-attempt a refresh.
       void (async () => {
         try {
-          const {
-            data: { session: cached }
-          } = await supabase.auth.getSession();
+          const cached = await getLocalSession(supabase);
           if (!isMounted) return;
           setSession(cached);
           setUser(cached?.user ?? null);
@@ -143,9 +160,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // bootstrap and double-fire the refresh endpoint.
         isRefreshing = true;
         try {
-          const {
-            data: { session: currentSession }
-          } = await supabase.auth.getSession();
+          const currentSession = await getLocalSession(supabase);
 
           if (!isMounted) {
             return;
@@ -202,9 +217,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               // Proceed with the local session so the app renders. If the
               // token really is dead, API calls will 401 and the normal
               // signed-out flow takes over from there.
-              const {
-                data: { session: fallbackSession }
-              } = await supabase.auth.getSession();
+              const fallbackSession = await getLocalSession(supabase);
 
               if (isMounted) {
                 setSession(fallbackSession);
@@ -238,9 +251,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
 
           // Re-read so we pick up the refreshed session if one happened.
-          const {
-            data: { session: resolvedSession }
-          } = await supabase.auth.getSession();
+          const resolvedSession = await getLocalSession(supabase);
 
           if (!isMounted) {
             return;
@@ -258,9 +269,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // session and let server-side API auth enforcement decide. Never
           // leave the app stuck loading.
           try {
-            const {
-              data: { session: fallbackSession }
-            } = await supabase.auth.getSession();
+            const fallbackSession = await getLocalSession(supabase);
 
             if (isMounted) {
               setSession(fallbackSession);
@@ -298,9 +307,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       void (async () => {
         try {
-          const {
-            data: { session: s }
-          } = await supabase.auth.getSession();
+          const s = await getLocalSession(supabase);
           if (!s) {
             return;
           }
@@ -344,6 +351,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // a *previous* dead token would permanently block all future refreshes.
       if (event === "SIGNED_IN" && nextSession) {
         refreshAttempted = false;
+      }
+
+      // Circuit breaker: a healthy session refreshes at most a couple of
+      // times per minute. Five or more TOKEN_REFRESHED events inside a 60s
+      // window means something is churning against a poisoned/rotated token
+      // (the production incident: an endless /auth/v1/token loop). Kill the
+      // auto-refresher and wipe the local session so the user gets one clean
+      // re-login instead of a permanently stuck app.
+      if (event === "TOKEN_REFRESHED") {
+        const now = Date.now();
+        tokenRefreshTimestamps = tokenRefreshTimestamps.filter((t) => now - t < 60_000);
+        tokenRefreshTimestamps.push(now);
+
+        if (tokenRefreshTimestamps.length >= REFRESH_STORM_THRESHOLD) {
+          console.error(
+            "[auth] Refresh storm detected (" +
+              `${tokenRefreshTimestamps.length} refreshes in 60s) — resetting local session`
+          );
+          tokenRefreshTimestamps = [];
+
+          void (async () => {
+            try {
+              supabase.auth.stopAutoRefresh();
+            } catch {
+              /* ignore */
+            }
+            try {
+              await supabase.auth.signOut({ scope: "local" });
+            } catch {
+              /* ignore — SIGNED_OUT event still fires below */
+            }
+          })();
+        }
       }
 
       // When the session disappears (explicit sign-out, or Supabase giving up
