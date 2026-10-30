@@ -1,73 +1,24 @@
-const CACHE_NAME = "smart-jotter-v1";
-const PRECACHE = ["/", "/icons/icon-192.png", "/icons/icon-512.png"];
+// Kill-switch service worker.
+//
+// The previous smart-jotter-v1 SW (cache-first statics + network-first pages)
+// caused browser-only breakage after deploys: stale chunk references and
+// stuck skeletons while the Android app (no SW) worked fine. The SW gave
+// little value (offline fallback only) at real reliability cost.
+//
+// This file exists only to uninstall the old SW and wipe its caches on every
+// client that still has it registered. No fetch handler => no interception.
+// pwa-register.tsx no longer registers any service worker.
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting())
-  );
+self.addEventListener("install", () => {
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-        )
-      )
-      .then(() => self.clients.claim())
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+      await self.registration.unregister();
+    })()
   );
-});
-
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-  if (request.method !== "GET") return;
-
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-  // Never intercept API calls (auth, payments, credits) — always live network.
-  if (url.pathname.startsWith("/api/")) return;
-
-  // Pages: network-first, fall back to the last cached copy, then to home.
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() =>
-          caches
-            .match(request)
-            .then((cached) => cached || caches.match("/"))
-        )
-    );
-    return;
-  }
-
-  // Static assets: cache-first (immutable _next builds, icons, images, fonts).
-  const isStatic =
-    url.pathname.startsWith("/_next/static/") ||
-    url.pathname.startsWith("/icons/") ||
-    url.pathname === "/smart-jotter-logo.png" ||
-    /\.(?:css|js|png|jpg|jpeg|svg|webp|ico|woff2?)$/.test(url.pathname);
-
-  if (isStatic) {
-    event.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((response) => {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-            return response;
-          })
-      )
-    );
-  }
 });
