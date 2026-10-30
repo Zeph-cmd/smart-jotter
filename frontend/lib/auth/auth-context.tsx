@@ -111,6 +111,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         tokenRefreshTimestamps = tokenRefreshTimestamps.filter((t) => now - t < 60_000);
         tokenRefreshTimestamps.push(now);
 
+        // Diagnostic: with 1-hour access tokens a healthy client refreshes
+        // roughly once per hour. If this logs deltas of ~60 minutes the
+        // refresher is fine; deltas of seconds/minutes mean a stale-cookie
+        // refresher or clock skew — decisive evidence for the next round.
+        const expiresAtSec = nextSession?.expires_at ?? 0;
+        const minutesRemaining = Math.round((expiresAtSec - now / 1000) / 60);
+        console.debug(
+          `[auth] token refreshed — new access token valid for ${minutesRemaining} min`
+        );
+
         if (tokenRefreshTimestamps.length >= REFRESH_STORM_THRESHOLD) {
           console.error(
             "[auth] Refresh storm detected (" +
