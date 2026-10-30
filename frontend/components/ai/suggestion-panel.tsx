@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import type { SuggestionAction } from "@/types/note";
 
+type SuggestionApplyMode = "insert" | "replace";
+
 type SuggestionPanelProps = {
   action: SuggestionAction | null;
   error: string | null;
   isLoading: boolean;
-  onApply: (editedSuggestion: string) => void;
+  onApply: (editedSuggestion: string, mode: SuggestionApplyMode) => void;
   onDismiss: () => void;
   suggestion: string | null;
 };
@@ -16,12 +18,6 @@ const ACTION_LABELS: Record<SuggestionAction, string> = {
   explain: "Explanation",
   improve: "Improved draft",
   expand: "Expanded draft"
-};
-
-const APPLY_LABELS: Record<SuggestionAction, string> = {
-  explain: "Replace note content",
-  improve: "Replace note content",
-  expand: "Append to note"
 };
 
 export function SuggestionPanel({
@@ -33,11 +29,13 @@ export function SuggestionPanel({
   suggestion
 }: SuggestionPanelProps) {
   const [editedSuggestion, setEditedSuggestion] = useState("");
+  const [copied, setCopied] = useState(false);
 
   // Sync local editable copy whenever a new suggestion arrives.
   useEffect(() => {
     if (suggestion) {
       setEditedSuggestion(suggestion);
+      setCopied(false);
     }
   }, [suggestion]);
 
@@ -46,6 +44,19 @@ export function SuggestionPanel({
   }
 
   const isEdited = suggestion !== null && editedSuggestion !== suggestion;
+
+  // Expand only generates the added words, so replacing the whole note with
+  // them makes no sense — offer Insert only, like the Android app.
+  const showReplace = action !== "expand";
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(editedSuggestion);
+      setCopied(true);
+    } catch {
+      // Clipboard can be blocked (permissions, insecure context) — non-critical.
+    }
+  };
 
   return (
     <section className="rounded-[28px] border border-line bg-white p-5 shadow-jotter dark:bg-slate-900">
@@ -91,14 +102,27 @@ export function SuggestionPanel({
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => onApply(editedSuggestion)}
-              className="inline-flex items-center justify-center rounded-full bg-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-blue-700 dark:hover:bg-blue-500"
+              onClick={() => onApply(editedSuggestion, "insert")}
+              className="inline-flex items-center justify-center rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-accent transition hover:bg-accent/10 dark:text-accent dark:hover:bg-accent/20"
             >
-              {isEdited
-                ? "Apply edited version"
-                : action
-                  ? APPLY_LABELS[action]
-                  : "Replace note content"}
+              Insert
+            </button>
+            {showReplace ? (
+              <button
+                type="button"
+                onClick={() => onApply(editedSuggestion, "replace")}
+                className="inline-flex items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 dark:hover:bg-blue-500"
+              >
+                Replace
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void handleCopy()}
+              aria-label="Copy suggestion"
+              className="inline-flex items-center justify-center rounded-full border border-line px-3 py-2 text-sm text-slate-500 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              {copied ? "Copied" : "Copy"}
             </button>
             {isEdited ? (
               <button
@@ -109,10 +133,12 @@ export function SuggestionPanel({
                 Reset
               </button>
             ) : null}
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Edit the suggestion before applying, or apply as-is. Your note is never replaced until you choose.
-            </p>
           </div>
+          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            {isEdited
+              ? "Your edited version will be applied."
+              : "Insert appends to your note; Replace overwrites it."}
+          </p>
         </>
       ) : null}
     </section>

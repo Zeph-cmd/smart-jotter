@@ -335,16 +335,19 @@ export function NoteEditorPage({ noteId }: NoteEditorPageProps) {
     }
   };
 
-  const handleApplySuggestion = (editedSuggestion?: string) => {
+  const handleApplySuggestion = (
+    editedSuggestion?: string,
+    mode: "insert" | "replace" = "replace"
+  ) => {
     const finalContent = editedSuggestion ?? suggestion;
 
     if (!finalContent) {
       return;
     }
 
-    // Expand only generates the added words — append them to the note
-    // instead of replacing it.
-    if (suggestionAction === "expand") {
+    // Insert appends (expand always uses insert — it only generates the added
+    // words); Replace overwrites the note content.
+    if (mode === "insert" || suggestionAction === "expand") {
       setContent((current) =>
         current.trim() ? `${current.trimEnd()}\n\n${finalContent.trim()}` : finalContent
       );

@@ -161,7 +161,7 @@ export function NoteList({
                 ) : null}
               </div>
               <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600 dark:text-slate-300">
-                {renderHighlightedText(note.content || "No content yet.", highlightQuery)}
+                {renderHighlightedText(previewText(note.content), highlightQuery)}
               </p>
               <div className="mt-4 flex items-center justify-end">
                 <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent dark:bg-accent/20 dark:text-accent">
@@ -223,6 +223,29 @@ export function NoteList({
       ) : null}
     </>
   );
+}
+
+const PREVIEW_MAX_CHARS = 200;
+
+/**
+ * Short preview shown on note cards: the first few lines only (title + teaser,
+ * matching the Android app). The full note stays one tap away in the editor.
+ */
+function previewText(content: string) {
+  const text = content.trim();
+
+  if (!text) {
+    return "No content yet.";
+  }
+
+  if (text.length <= PREVIEW_MAX_CHARS) {
+    return text;
+  }
+
+  const slice = text.slice(0, PREVIEW_MAX_CHARS);
+  const lastSpace = slice.lastIndexOf(" ");
+
+  return `${(lastSpace > PREVIEW_MAX_CHARS * 0.6 ? slice.slice(0, lastSpace) : slice).trimEnd()}…`;
 }
 
 function renderHighlightedText(text: string, query: string) {
