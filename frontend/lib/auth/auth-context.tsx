@@ -13,6 +13,27 @@ import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { getTermsAgreement, setTermsAgreed } from "@/lib/auth/agreement";
 
+/**
+ * Network calls during bootstrap (token refresh, user check) can HANG
+ * indefinitely on flaky networks (observed: net::ERR_TIMED_OUT / requests
+ * stuck pending on some ISPs). The whole app shell is gated on isLoading, so
+ * one stalled call used to mean skeletons forever with no error and no way
+ * out. raceTimeout bounds every network wait: on timeout we proceed
+ * optimistically with the cached session (server routes enforce auth anyway)
+ * instead of hanging the UI or wrongly signing the user out.
+ */
+const AUTH_CALL_TIMEOUT_MS = 8_000;
+const AUTH_TIMEOUT = "auth-timeout" as const;
+
+function raceTimeout<T>(promise: PromiseLike<T>): Promise<T | typeof AUTH_TIMEOUT> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<typeof AUTH_TIMEOUT>((resolve) => {
+      setTimeout(() => resolve(AUTH_TIMEOUT), AUTH_CALL_TIMEOUT_MS);
+    })
+  ]);
+}
+
 type AuthContextValue = {
   isLoading: boolean;
   /** True until we've finished loading the terms-agreement state for a signed-in user. */
@@ -145,6 +166,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const shouldRefresh = expiresAt - nowSec < 60;
 
             let failed = false;
+            let timedOut = false;
 
             if (shouldRefresh) {
               // Hard guarantee: across bootstrap + visibility handler + any
@@ -156,12 +178,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 failed = true;
               } else {
                 refreshAttempted = true;
-                const { error: refreshError } = await supabase.auth.refreshSession();
-                failed = Boolean(refreshError);
+                const refreshResult = await raceTimeout(supabase.auth.refreshSession());
+
+                if (refreshResult === AUTH_TIMEOUT) {
+                  // Network stalled — NOT a bad token. Keep the cached
+                  // session and render; API routes enforce auth server-side.
+                  timedOut = true;
+                } else {
+                  failed = Boolean(refreshResult.error);
+                }
               }
             } else {
-              const { error: userError } = await supabase.auth.getUser();
-              failed = Boolean(userError);
+              const userResult = await raceTimeout(supabase.auth.getUser());
+
+              if (userResult === AUTH_TIMEOUT) {
+                timedOut = true;
+              } else {
+                failed = Boolean(userResult.error);
+              }
+            }
+
+            if (timedOut) {
+              // Proceed with the local session so the app renders. If the
+              // token really is dead, API calls will 401 and the normal
+              // signed-out flow takes over from there.
+              const {
+                data: { session: fallbackSession }
+              } = await supabase.auth.getSession();
+
+              if (isMounted) {
+                setSession(fallbackSession);
+                setUser(fallbackSession?.user ?? null);
+                setIsLoading(false);
+              }
+              return;
             }
 
             if (failed) {
@@ -200,18 +250,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(resolvedSession?.user ?? null);
           setIsLoading(false);
         } catch {
-          // Unexpected failure (network drop, client misconfiguration). Fail
-          // safe: clear any dead session so subsequent mounts/visibility
-          // events don't retry on it. Never leave the app stuck loading.
+          // Unexpected failure (network drop, client misconfiguration). A
+          // definitive "bad token" is handled above via `failed`; reaching
+          // this catch means we could not VALIDATE the session (e.g. the
+          // network rejected mid-flight). Signing out here would log users
+          // out on every network blip, so instead fall back to the cached
+          // session and let server-side API auth enforcement decide. Never
+          // leave the app stuck loading.
           try {
-            await supabase.auth.signOut({ scope: "local" });
+            const {
+              data: { session: fallbackSession }
+            } = await supabase.auth.getSession();
+
+            if (isMounted) {
+              setSession(fallbackSession);
+              setUser(fallbackSession?.user ?? null);
+              setIsLoading(false);
+            }
           } catch {
-            /* ignore */
-          }
-          if (isMounted) {
-            setSession(null);
-            setUser(null);
-            setIsLoading(false);
+            if (isMounted) {
+              setSession(null);
+              setUser(null);
+              setIsLoading(false);
+            }
           }
         } finally {
           isRefreshing = false;
