@@ -52,7 +52,11 @@ export async function getTermsAgreement(): Promise<TermsAgreementStatus | null> 
   try {
     const response = await fetch("/api/auth/accept-terms", {
       method: "GET",
-      cache: "no-store"
+      cache: "no-store",
+      // Bound the wait: a hung request (flaky mobile network) previously kept
+      // the agreement state "unknown" indefinitely, parking the UI on the
+      // loading skeleton. 8s, then treat as unknown.
+      signal: AbortSignal.timeout(8_000)
     });
 
     if (!response.ok) {
@@ -88,7 +92,8 @@ export async function setTermsAgreed(
 ): Promise<void> {
   const response = await fetch("/api/auth/accept-terms", {
     method: "POST",
-    headers: { "Content-Type": "application/json" }
+    headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(12_000)
   });
 
   const data = (await response.json()) as AcceptTermsResponse;

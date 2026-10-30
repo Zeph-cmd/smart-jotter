@@ -14,38 +14,19 @@ export function createBrowserSupabaseClient() {
       // This routes every PostgREST query via Accept-Profile: jotter.
       db: { schema: "jotter" },
       auth: {
-        // CRITICAL: supabase-js enables autoRefreshToken by default. It runs a
-        // background timer (_recoverAndRefresh) that retries /oauth/token on its
-        // own schedule, independently of any React effect. When a refresh token
-        // is permanently invalid (revoked, user deleted, corrupted cookie), the
-        // timer never converges and produces an infinite request storm that
-        // blocks the app from ever leaving the loading skeleton.
-        //
-        // We disable it here and instead perform a SINGLE explicit refresh
-        // during bootstrap in AuthProvider, signing out locally on failure.
-        // Session continuity during active use:
-        //   - the browser client itself writes fresh session cookies on every
-        //     successful refresh, so server routes always see a valid token, and
-        //   - a visibilitychange listener in AuthProvider refreshes once when
-        //     the user returns to the tab with a near-expiry token.
-        autoRefreshToken: false,
-        persistSession: true,
-        // We don't use the implicit OAuth flow, so skip URL-hash parsing on
-        // every load (avoids unnecessary work / edge cases).
-        detectSessionInUrl: false
+        persistSession: true
       }
     });
 
-    // Belt and braces: @supabase/ssr's browser client manages its own
-    // visibilitychange listener that can re-enable the auto-refresh timer when
-    // the tab regains focus, regardless of the config above. A background
-    // timer retrying refreshes against a poisoned/rotated token is exactly
-    // what produced the endless /auth/v1/token loop, so keep it off for good.
-    try {
-      void browserClient.auth.stopAutoRefresh();
-    } catch {
-      /* older clients may not expose this — config above still applies */
-    }
+    // NOTE: do NOT configure autoRefreshToken / detectSessionInUrl here.
+    // @supabase/ssr's createBrowserClient spreads user auth options FIRST and
+    // then force-overwrites them with autoRefreshToken: true and
+    // detectSessionInUrl: true (verified in ssr dist/main/createBrowserClient.js),
+    // so custom values are silently ignored. The library is therefore the
+    // single owner of token refresh (single-flight + backoff) and PKCE
+    // exchange — exactly what we want now that no middleware races it.
+    // Previously a bespoke refresh system in AuthProvider plus the library's
+    // own engine produced duplicate /auth/v1/token storms after sign-in.
   }
 
   return browserClient;

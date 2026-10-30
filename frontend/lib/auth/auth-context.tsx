@@ -5,48 +5,12 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode
 } from "react";
 import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { getTermsAgreement, setTermsAgreed } from "@/lib/auth/agreement";
-
-/**
- * Network calls during bootstrap (token refresh, user check) can HANG
- * indefinitely on flaky networks (observed: net::ERR_TIMED_OUT / requests
- * stuck pending on some ISPs). The whole app shell is gated on isLoading, so
- * one stalled call used to mean skeletons forever with no error and no way
- * out. raceTimeout bounds every network wait: on timeout we proceed
- * optimistically with the cached session (server routes enforce auth anyway)
- * instead of hanging the UI or wrongly signing the user out.
- */
-const AUTH_CALL_TIMEOUT_MS = 8_000;
-const AUTH_TIMEOUT = "auth-timeout" as const;
-
-function raceTimeout<T>(promise: PromiseLike<T>): Promise<T | typeof AUTH_TIMEOUT> {
-  return Promise.race([
-    Promise.resolve(promise),
-    new Promise<typeof AUTH_TIMEOUT>((resolve) => {
-      setTimeout(() => resolve(AUTH_TIMEOUT), AUTH_CALL_TIMEOUT_MS);
-    })
-  ]);
-}
-
-/**
- * Bounded local-session read. Even `getSession()` can stall: supabase-js
- * awaits internal initialization that a refresh storm can starve (observed in
- * production). Every session read in bootstrap MUST be bounded — on timeout we
- * return null (treated as signed out) rather than awaiting forever.
- */
-async function getLocalSession(client: SupabaseClient): Promise<Session | null> {
-  const result = await raceTimeout(client.auth.getSession());
-  if (result === AUTH_TIMEOUT) {
-    return null;
-  }
-  return result.data.session ?? null;
-}
 
 type AuthContextValue = {
   isLoading: boolean;
@@ -69,26 +33,10 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Module-level guards that enforce "refresh at most ONCE per page load".
-//
-// Why module-level (not useRef/useState): React state/refs reset on every
-// remount, but a dead refresh token can survive across remounts in
-// localStorage. A module-level flag survives remounts within the same page
-// lifecycle, guaranteeing we never ask Supabase to refresh more than once —
-// no matter how many times AuthProvider re-mounts (StrictMode, layout shifts,
-// route transitions that preserve the provider, error-boundary recovery).
-// This is the single most important defence against the
-// /auth/v1/token?grant_type=refresh 429 rate-limit storm.
-let bootstrapStarted = false;
-// True once we have attempted (or are attempting) a refresh this page load.
-// Set on every refresh path and never cleared except when a brand-new sign-in
-// gives us a fresh, valid session.
-let refreshAttempted = false;
-
-let isRefreshing = false;
-
-// Circuit-breaker state: rolling window of TOKEN_REFRESHED event timestamps.
-// Survives remounts (module scope) so a churn loop can't hide by remounting.
+// Storm-detector state: rolling window of TOKEN_REFRESHED event timestamps.
+// Module scope so a churn loop can't hide by remounting. With the library as
+// the single refresh owner (single-flight + backoff) a real storm should never
+// occur; this exists only to log + disarm the refresher if one ever does.
 let tokenRefreshTimestamps: number[] = [];
 const REFRESH_STORM_THRESHOLD = 5;
 
@@ -119,246 +67,45 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    let isMounted = true;
-
-    // Hard safety net: no matter what happens (network hung, a refresh loop we
-    // didn't anticipate, an unhandled rejection), never leave the app stuck on
-    // the loading skeleton forever. After this many ms we force loading off so
-    // the user at least sees the login screen and can retry.
+    // Hard safety net: no matter what happens (network hung, an unhandled
+    // rejection), never leave the app stuck on the loading skeleton forever.
+    // After this many ms we force loading off so the user at least sees the
+    // login screen and can retry.
     const LOADING_TIMEOUT_MS = 12_000;
     const loadingTimer = window.setTimeout(() => {
       setIsLoading(false);
     }, LOADING_TIMEOUT_MS);
 
-    // "Once per session load" guard: if AuthProvider re-mounts (StrictMode,
-    // layout shifts, route transitions that preserve the provider, error
-    // boundary recovery) we must NOT re-run the bootstrap that can call
-    // refreshSession(). A remount with a dead token in storage is exactly the
-    // scenario that produced the /auth/v1/token 429 storm. The module-level
-    // flag survives remounts within one page lifecycle, so this block — the
-    // ONLY place a refresh can happen during bootstrap — runs at most once.
-    if (bootstrapStarted) {
-      // Still surface whatever session storage holds so the UI is correct,
-      // but never re-attempt a refresh.
-      void (async () => {
-        try {
-          const cached = await getLocalSession(supabase);
-          if (!isMounted) return;
-          setSession(cached);
-          setUser(cached?.user ?? null);
-        } catch {
-          /* ignore — leave current state */
-        } finally {
-          if (isMounted) setIsLoading(false);
-        }
-      })();
-    } else {
-      bootstrapStarted = true;
-
-      const loadSession = async () => {
-        // Single-writer guard so the visibility handler can't overlap with
-        // bootstrap and double-fire the refresh endpoint.
-        isRefreshing = true;
-        try {
-          const currentSession = await getLocalSession(supabase);
-
-          if (!isMounted) {
-            return;
-          }
-
-          // autoRefreshToken is DISABLED on the browser client (see
-          // lib/supabase/browser.ts) to prevent the background timer from
-          // hammering /oauth/token on a dead refresh token. This block is the
-          // SINGLE place we allow a refresh during bootstrap — exactly one
-          // attempt, and on any failure we clear local state and fall back to
-          // the login screen. There is no retry path here, so no 429 storm.
-          if (currentSession) {
-            // Refresh iff the access token is already expired or about to
-            // expire (< 60s). If the token is still good, just verify the user
-            // still exists server-side. Either branch fails closed.
-            const expiresAt = currentSession.expires_at ?? 0;
-            const nowSec = Math.floor(Date.now() / 1000);
-            const shouldRefresh = expiresAt - nowSec < 60;
-
-            let failed = false;
-            let timedOut = false;
-
-            if (shouldRefresh) {
-              // Hard guarantee: across bootstrap + visibility handler + any
-              // remount, we ask Supabase to refresh AT MOST ONCE per page
-              // load. Without this, two concurrent paths (or a remount racing
-              // the visibility handler) can each fire refreshSession() against
-              // the same dead token and pile up requests.
-              if (refreshAttempted) {
-                failed = true;
-              } else {
-                refreshAttempted = true;
-                const refreshResult = await raceTimeout(supabase.auth.refreshSession());
-
-                if (refreshResult === AUTH_TIMEOUT) {
-                  // Network stalled — NOT a bad token. Keep the cached
-                  // session and render; API routes enforce auth server-side.
-                  timedOut = true;
-                } else {
-                  failed = Boolean(refreshResult.error);
-                }
-              }
-            } else {
-              const userResult = await raceTimeout(supabase.auth.getUser());
-
-              if (userResult === AUTH_TIMEOUT) {
-                timedOut = true;
-              } else {
-                failed = Boolean(userResult.error);
-              }
-            }
-
-            if (timedOut) {
-              // Proceed with the local session so the app renders. If the
-              // token really is dead, API calls will 401 and the normal
-              // signed-out flow takes over from there.
-              const fallbackSession = await getLocalSession(supabase);
-
-              if (isMounted) {
-                setSession(fallbackSession);
-                setUser(fallbackSession?.user ?? null);
-                setIsLoading(false);
-              }
-              return;
-            }
-
-            if (failed) {
-              // scope: "local" avoids an extra (failing) server revocation call
-              // — the token is already bad. It clears cookies/storage so the
-              // client holds no dead credentials, which also stops the
-              // visibility handler and any remount from retrying on the same
-              // dead token.
-              try {
-                await supabase.auth.signOut({ scope: "local" });
-              } catch {
-                /* already cleared as best-effort */
-              }
-
-              if (!isMounted) {
-                return;
-              }
-
-              setSession(null);
-              setUser(null);
-              setIsLoading(false);
-              return;
-            }
-          }
-
-          // Re-read so we pick up the refreshed session if one happened.
-          const resolvedSession = await getLocalSession(supabase);
-
-          if (!isMounted) {
-            return;
-          }
-
-          setSession(resolvedSession);
-          setUser(resolvedSession?.user ?? null);
-          setIsLoading(false);
-        } catch {
-          // Unexpected failure (network drop, client misconfiguration). A
-          // definitive "bad token" is handled above via `failed`; reaching
-          // this catch means we could not VALIDATE the session (e.g. the
-          // network rejected mid-flight). Signing out here would log users
-          // out on every network blip, so instead fall back to the cached
-          // session and let server-side API auth enforcement decide. Never
-          // leave the app stuck loading.
-          try {
-            const fallbackSession = await getLocalSession(supabase);
-
-            if (isMounted) {
-              setSession(fallbackSession);
-              setUser(fallbackSession?.user ?? null);
-              setIsLoading(false);
-            }
-          } catch {
-            if (isMounted) {
-              setSession(null);
-              setUser(null);
-              setIsLoading(false);
-            }
-          }
-        } finally {
-          isRefreshing = false;
-        }
-      };
-
-      void loadSession();
-    }
-
-    // Because autoRefreshToken is off, refresh the session once when the user
-    // returns to the tab IF the token is near expiry. This keeps long-lived
-    // tabs working without re-introducing a background retry loop. The
-    // module-level `isRefreshing` AND `refreshAttempted` guards prevent both
-    // overlapping refreshes and a retry storm on a dead token.
-    const onVisibilityChange = () => {
-      if (
-        document.visibilityState !== "visible" ||
-        isRefreshing ||
-        refreshAttempted
-      ) {
-        return;
-      }
-
-      void (async () => {
-        try {
-          const s = await getLocalSession(supabase);
-          if (!s) {
-            return;
-          }
-          const nowSec = Math.floor(Date.now() / 1000);
-          if ((s.expires_at ?? 0) - nowSec >= 60) {
-            return;
-          }
-
-          // Claim the single refresh slot for this page load. If bootstrap
-          // already tried (and failed), we don't try again here — the token
-          // is almost certainly dead and another request would feed the 429.
-          refreshAttempted = true;
-          isRefreshing = true;
-          const { error } = await supabase.auth.refreshSession();
-          if (error && isMounted) {
-            // Refresh failed on return — sign out locally so the UI reflects
-            // reality instead of holding a stale/expired token.
-            try {
-              await supabase.auth.signOut({ scope: "local" });
-            } catch {
-              /* ignore */
-            }
-          }
-        } catch {
-          /* non-fatal: next bootstrap will retry */
-        } finally {
-          isRefreshing = false;
-        }
-      })();
-    };
-
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    // Bootstrap: read the persisted session. getSession() NEVER refreshes —
+    // it resolves instantly from storage. The library's auto-refresh engine
+    // (forced on by @supabase/ssr) owns ALL token refreshes from here; we do
+    // not race it with bespoke refresh logic (that race caused duplicate
+    // /auth/v1/token storms after sign-in).
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        setSession(data.session ?? null);
+        setUser(data.session?.user ?? null);
+      })
+      .catch(() => {
+        // Storage read failure — leave state as-is; the listener below still
+        // resolves loading.
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
 
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      // A brand-new sign-in (user just typed their password, or completed
-      // sign-up) produces a fresh, valid refresh token. Reset the
-      // refresh-attempt guard so the visibility handler can keep this new
-      // session alive later — otherwise the "once per page load" limit from
-      // a *previous* dead token would permanently block all future refreshes.
-      if (event === "SIGNED_IN" && nextSession) {
-        refreshAttempted = false;
-      }
-
-      // Circuit breaker: a healthy session refreshes at most a couple of
-      // times per minute. Five or more TOKEN_REFRESHED events inside a 60s
-      // window means something is churning against a poisoned/rotated token
-      // (the production incident: an endless /auth/v1/token loop). Kill the
-      // auto-refresher and wipe the local session so the user gets one clean
-      // re-login instead of a permanently stuck app.
+      // Storm detector: with the library as the single refresh owner
+      // (single-flight + backoff) a healthy session refreshes at most a
+      // couple of times per minute. Five or more TOKEN_REFRESHED events in a
+      // 60s window means something unexpected is churning — log it loudly and
+      // disarm the refresher. We deliberately do NOT sign the user out here:
+      // with a still-valid session the app keeps working, and at worst the
+      // token expires naturally and the user logs in once more. (The previous
+      // auto-signOut turned a cosmetic storm into a login bounce.)
       if (event === "TOKEN_REFRESHED") {
         const now = Date.now();
         tokenRefreshTimestamps = tokenRefreshTimestamps.filter((t) => now - t < 60_000);
@@ -367,28 +114,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (tokenRefreshTimestamps.length >= REFRESH_STORM_THRESHOLD) {
           console.error(
             "[auth] Refresh storm detected (" +
-              `${tokenRefreshTimestamps.length} refreshes in 60s) — resetting local session`
+              `${tokenRefreshTimestamps.length} refreshes in 60s) — stopping auto-refresh`
           );
           tokenRefreshTimestamps = [];
 
-          void (async () => {
-            try {
-              supabase.auth.stopAutoRefresh();
-            } catch {
-              /* ignore */
-            }
-            try {
-              await supabase.auth.signOut({ scope: "local" });
-            } catch {
-              /* ignore — SIGNED_OUT event still fires below */
-            }
-          })();
+          try {
+            supabase.auth.stopAutoRefresh();
+          } catch {
+            /* ignore */
+          }
         }
       }
 
-      // When the session disappears (explicit sign-out, or Supabase giving up
-      // on refreshing), clear the user so the UI returns to the login screen
-      // rather than holding a stale session.
+      // When the session disappears (explicit sign-out, or the library giving
+      // up on a refresh), clear the user so the UI returns to the login
+      // screen rather than holding a stale session.
       if (event === "SIGNED_OUT" || nextSession === null) {
         setSession(null);
         setUser(null);
@@ -400,34 +140,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
     });
 
     return () => {
-      isMounted = false;
       window.clearTimeout(loadingTimer);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
       subscription.unsubscribe();
     };
   }, [supabase]);
 
-  // Tracks which user id the agreement state was loaded for, so auth events
-  // that merely swap the user object identity (TOKEN_REFRESHED, repeated
-  // SIGNED_IN) don't re-fire the status request and exhaust rate limits.
-  const agreementLoadedForUserId = useRef<string | null>(null);
+  // The signed-in user's id, as a PRIMITIVE. The agreement effect must depend
+  // on this instead of the `user` object: supabase-js emits new user object
+  // identities on auth events (INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED),
+  // and an object-identity dependency re-runs the effect on each one — its
+  // cleanup cancels the in-flight fetch AND the fallback timer, after which
+  // the same-user guard skipped re-fetching, leaving the agreement state stuck
+  // at null and the UI on a permanent skeleton. With an id dependency the
+  // effect runs only when the actual signed-in account changes.
+  const userId = user?.id ?? null;
 
-  // Load the terms-agreement state whenever the signed-in user changes.
+  // Load the terms-agreement state whenever the signed-in user id changes.
   // Reset to null on logout / loading so the gate treats it as "unknown".
   useEffect(() => {
-    if (!supabase || !user) {
-      agreementLoadedForUserId.current = null;
+    if (!supabase || !userId) {
       setHasAgreedToTerms(null);
       setIsAgreementLoading(false);
       return;
     }
-
-    // Same user, new object identity — the stored agreement can't have
-    // changed; keep the current state (including a fresh acceptance).
-    if (agreementLoadedForUserId.current === user.id) {
-      return;
-    }
-    agreementLoadedForUserId.current = user.id;
 
     let isMounted = true;
     setIsAgreementLoading(true);
@@ -466,7 +201,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isMounted = false;
       window.clearTimeout(agreementTimer);
     };
-  }, [supabase, user]);
+  }, [supabase, userId]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
